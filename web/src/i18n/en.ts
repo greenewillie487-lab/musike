@@ -58,6 +58,7 @@ export const en = {
     favorites: "Favorites",
     recentlyPlayed: "Recently played",
     history: "History",
+    playlists: "Playlists",
   },
 
   home: {
@@ -137,6 +138,7 @@ export const en = {
     mute: "Mute",
     unmute: "Unmute",
     volume: "Volume",
+    volMax: "Full volume",
     mode: "Playback mode",
     audio: "Audio",
     video: "Video",
@@ -372,6 +374,7 @@ export const en = {
     accent: "Accent color",
     customColor: "Custom color",
     colors: {
+      red: "Red",
       volt: "Volt",
       mint: "Mint",
       aqua: "Aqua",

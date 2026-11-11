@@ -1,4 +1,4 @@
-import { BooksIcon, HouseIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { BooksIcon, HouseIcon, MagnifyingGlassIcon, FastForwardIcon } from "@phosphor-icons/react";
 import { NavLink, useNavigate } from "react-router";
 import { cn } from "../lib/format";
 import { useT } from "../i18n";
@@ -18,9 +18,9 @@ export function TabBar() {
   return (
     <nav
       aria-label={t.nav.main}
-      className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/85 backdrop-blur-xl"
+      className="fixed inset-x-3 bottom-[calc(10px+env(safe-area-inset-bottom))] z-20"
     >
-      <ul className="mx-auto grid h-16 max-w-md grid-cols-3">
+      <ul className="glass mx-auto grid h-16 max-w-md grid-cols-3 rounded-[26px]">
         {tabs.map(({ to, key, Icon, end }) => (
           <li key={to}>
             <NavLink
@@ -28,19 +28,13 @@ export function TabBar() {
               end={end}
               className={({ isActive }) =>
                 cn(
-                  "relative flex h-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
-                  isActive ? "text-fg" : "text-fg-3",
+                  "flex h-full flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors",
+                  isActive ? "text-accent-text" : "text-fg-2",
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <span
-                    className={cn(
-                      "absolute top-0 h-[3px] w-8 rounded-b-full bg-accent transition-transform duration-300 ease-out-expo",
-                      isActive ? "scale-x-100" : "scale-x-0",
-                    )}
-                  />
                   <Icon size={24} weight={isActive ? "fill" : "regular"} />
                   {t.nav[key]}
                 </>
@@ -60,25 +54,30 @@ export function MiniPlayer() {
   const status = usePlayer((s) => s.status);
   const statusText = useStatusText();
   const toggle = usePlayer((s) => s.toggle);
+  const next = usePlayer((s) => s.next);
   const t = useT();
   const navigate = useNavigate();
   if (!track) return null;
   const pct = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
 
   return (
-    <div className="fixed inset-x-2 bottom-[calc(72px+env(safe-area-inset-bottom))] z-20">
-      <div className="island p-1! shadow-[0_10px_30px_rgb(0_0_0/0.35)]">
-        <div className="island-core relative flex h-14 items-center gap-3 overflow-hidden pr-1 pl-1.5">
+    <div className="fixed inset-x-3 bottom-[calc(84px+env(safe-area-inset-bottom))] z-20">
+      <div className="glass relative overflow-hidden rounded-[24px]">
+        {/* Hairline progress along the top edge. */}
+        <span className="absolute inset-x-0 top-0 z-10 h-[2px] bg-fg/25">
+          <span className="block h-full bg-fg" style={{ width: `${pct}%` }} />
+        </span>
+        <div className="flex h-14 items-center gap-2 pr-1 pl-2.5">
           <button
             type="button"
             onClick={() => navigate({ hash: NOW_PLAYING_HASH })}
             className="flex min-w-0 flex-1 items-center gap-3 text-left"
             aria-label={t.player.openNowPlaying(track.title)}
           >
-            <Artwork src={track.thumb} className="size-11 rounded-[10px]" />
+            <Artwork src={track.thumb} className="size-10 rounded-[6px]" />
             <span className="min-w-0">
-              <span className="block truncate text-sm font-medium">{track.title}</span>
-              <span className={cn("block truncate text-xs", status === "error" ? "text-danger" : "text-fg-2")}>
+              <span className="block truncate text-[13px] font-semibold">{track.title}</span>
+              <span className={cn("block truncate text-[11px]", status === "error" ? "text-danger" : "text-fg-2")}>
                 {statusText ?? track.artist}
               </span>
             </span>
@@ -91,9 +90,14 @@ export function MiniPlayer() {
           >
             <PlayPauseIcon size={24} />
           </button>
-          <span className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-surface-4">
-            <span className="block h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
-          </span>
+          <button
+            type="button"
+            onClick={next}
+            aria-label={t.player.next}
+            className="grid size-11 shrink-0 place-items-center rounded-full text-fg active:scale-90"
+          >
+            <FastForwardIcon size={22} weight="fill" />
+          </button>
         </div>
       </div>
     </div>

@@ -2,7 +2,6 @@ import { ArrowRightIcon, MusicNotesIcon, PauseIcon, PlayIcon, PlaylistIcon, Shuf
 import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import { Artwork } from "../components/Artwork";
-import { IconButton, PlayDisc } from "../components/IconButton";
 import { BackButton, EmptyState, PageHeader } from "../components/Page";
 import { SelectableTrackList } from "../components/Selection";
 import { TrackListSkeleton } from "../components/TrackList";
@@ -80,16 +79,22 @@ export default function Album() {
 
       {album && tracks.length > 0 && (
         <div className="flex items-center gap-2 px-4 pb-4 md:px-6">
-          <PlayDisc
-            label={playing ? t.common.pause : t.album.play(album.title)}
-            px={56}
+          <button
+            type="button"
+            aria-label={playing ? t.common.pause : t.album.play(album.title)}
             onClick={() => (isThisPlaying ? toggle() : playList(tracks, 0))}
+            className="grid size-14 shrink-0 place-items-center rounded-full bg-fg text-bg transition-transform duration-200 ease-out-expo hover:scale-105 active:scale-95"
           >
-            {playing ? <PauseIcon size={24} weight="fill" /> : <PlayIcon size={24} weight="fill" />}
-          </PlayDisc>
-          <IconButton label={t.album.shuffle} size="lg" onClick={() => playList(shuffled(tracks), 0)}>
-            <ShuffleIcon size={24} />
-          </IconButton>
+            {playing ? <PauseIcon size={26} weight="fill" /> : <PlayIcon size={26} weight="fill" />}
+          </button>
+          <button
+            type="button"
+            aria-label={t.album.shuffle}
+            onClick={() => playList(shuffled(tracks), 0)}
+            className="glass-thin grid size-14 shrink-0 place-items-center rounded-full text-fg transition-transform duration-200 ease-out-expo hover:scale-105 active:scale-95"
+          >
+            <ShuffleIcon size={22} />
+          </button>
           {saved ? (
             <Link
               to={paths.playlist(saved)}

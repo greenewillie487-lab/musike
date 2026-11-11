@@ -9,7 +9,7 @@ export function AlbumTile({ album, className }: { album: AlbumCard; className?: 
   const sub = [album.artist, album.year].filter(Boolean).join(" · ");
   return (
     <Link to={paths.album(album.id)} state={{ name: album.title }} className={cn("group flex flex-col gap-2", className)}>
-      <span className="block overflow-hidden rounded-[14px]">
+      <span className="block overflow-hidden rounded-lg shadow-[0_6px_18px_rgb(0_0_0/0.35)]">
         <Artwork
           src={album.art}
           fallback={album.thumb}

@@ -1,5 +1,17 @@
 import { cn } from "../lib/format";
 
+/** The app icon itself, as shown in the app chrome (top corners). */
+export function AppIconMark({ className }: { className?: string }) {
+  return (
+    <img
+      src="/icon.png"
+      alt=""
+      aria-hidden="true"
+      className={cn("rounded-[18%] shadow-[0_2px_8px_rgb(0_0_0/0.35)]", className)}
+    />
+  );
+}
+
 /** The Musike mark: three equalizer bars forming an M. */
 export function LogoMark({ className }: { className?: string }) {
   return (

@@ -32,28 +32,3 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(function IconButt
     </button>
   );
 });
-
-/** The primary play button: a solid Volt disc. */
-export const PlayDisc = forwardRef<HTMLButtonElement, Omit<Props, "active"> & { px?: number }>(function PlayDisc(
-  { label, className, children, px = 48, ...rest },
-  ref,
-) {
-  return (
-    <button
-      ref={ref}
-      type="button"
-      aria-label={label}
-      title={label}
-      style={{ width: px, height: px }}
-      className={cn(
-        "grid shrink-0 place-items-center rounded-full bg-accent text-accent-ink",
-        "shadow-[inset_0_1px_0_rgb(255_255_255/0.45)] transition-transform duration-200 ease-out-expo",
-        "hover:scale-[1.04] active:scale-[0.95] disabled:opacity-40",
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </button>
-  );
-});

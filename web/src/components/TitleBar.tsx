@@ -1,7 +1,7 @@
 import { desktop } from "../lib/desktop";
 import { cn } from "../lib/format";
 import { selectCurrent, usePlayer } from "../player/player";
-import { Equalizer, LogoMark } from "./Brand";
+import { AppIconMark, Equalizer } from "./Brand";
 
 /**
  * Title bar for the desktop app. The window is frameless; Windows and Linux draw their native buttons over the
@@ -20,7 +20,7 @@ export function TitleBar() {
         paddingRight: "calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 12px)",
       }}
     >
-      <LogoMark className="size-[18px] shrink-0 text-accent-text" />
+      <AppIconMark className="size-[18px] shrink-0" />
       <span className="shrink-0 text-[13px] font-semibold tracking-tight">musike</span>
       {track && (
         <span className="flex min-w-0 items-center gap-2 pl-2 text-xs text-fg-3">

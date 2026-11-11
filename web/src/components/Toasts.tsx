@@ -22,7 +22,7 @@ export function Toasts() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 500, damping: 40 }}
-            className="pointer-events-auto flex max-w-md items-center gap-2.5 rounded-full border border-line-strong bg-surface-3 py-1.5 pr-1.5 pl-3 text-sm shadow-[0_8px_30px_rgb(0_0_0/0.35)]"
+            className="glass pointer-events-auto flex max-w-md items-center gap-2.5 rounded-full py-1.5 pr-1.5 pl-3 text-sm"
           >
             <button type="button" onClick={() => dismiss(toast.id)} className="flex min-w-0 items-center gap-2.5 py-1 text-left" aria-label={t.toasts.dismiss(toast.message)}>
               {toast.tone === "error" ? (

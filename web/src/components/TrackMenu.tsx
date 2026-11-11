@@ -134,7 +134,7 @@ export function TrackMenu() {
               exit={{ opacity: 0, scale: 0.97 }}
               transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
               style={pos}
-              className="absolute w-64 origin-top-left rounded-2xl border border-line-strong bg-surface-2 p-1.5 shadow-[0_16px_48px_rgb(0_0_0/0.45)]"
+              className="glass absolute w-64 origin-top-left rounded-2xl p-1.5"
             >
               {content}
             </motion.div>

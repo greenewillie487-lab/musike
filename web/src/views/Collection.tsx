@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Cover, type CoverKind } from "../components/Cover";
 import { NamePlaylistDialog } from "../components/Dialogs";
-import { IconButton, PlayDisc } from "../components/IconButton";
+import { IconButton } from "../components/IconButton";
 import { Modal } from "../components/Modal";
 import { EmptyState, PageHeader } from "../components/Page";
 import { TrackList } from "../components/TrackList";
@@ -87,14 +87,15 @@ export default function Collection({ kind }: Props) {
       </div>
 
       <div className="flex items-center gap-2 px-4 pb-4 md:px-6">
-        <PlayDisc
-          label={playing ? t.common.pause : t.common.playX(name)}
-          px={56}
+        <button
+          type="button"
+          aria-label={playing ? t.common.pause : t.common.playX(name)}
           disabled={!tracks.length}
           onClick={() => (isThisPlaying ? toggle() : playList(tracks, 0))}
+          className="grid size-14 shrink-0 place-items-center rounded-full bg-fg text-bg transition-transform duration-200 ease-out-expo hover:scale-105 active:scale-95 disabled:opacity-40"
         >
-          {playing ? <PauseIcon size={24} weight="fill" /> : <PlayIcon size={24} weight="fill" />}
-        </PlayDisc>
+          {playing ? <PauseIcon size={26} weight="fill" /> : <PlayIcon size={26} weight="fill" />}
+        </button>
         <IconButton
           label={t.collection.shuffle}
           size="lg"

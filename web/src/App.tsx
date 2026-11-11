@@ -113,8 +113,8 @@ export default function App() {
         <main
           ref={main}
           className={cn(
-            "scroll-area relative min-w-0 flex-1 overflow-y-auto md:rounded-[20px] md:bg-surface-1 md:ring-1 md:ring-line",
-            hasTrack ? "pb-[calc(152px+env(safe-area-inset-bottom))]" : "pb-[calc(88px+env(safe-area-inset-bottom))]",
+            "scroll-area relative min-w-0 flex-1 overflow-y-auto md:rounded-[16px] md:bg-surface-1 md:ring-1 md:ring-line",
+            hasTrack ? "pb-[calc(156px+env(safe-area-inset-bottom))]" : "pb-[calc(88px+env(safe-area-inset-bottom))]",
             "md:pb-0",
           )}
         >

@@ -90,19 +90,20 @@ function Dots() {
 
 function Line({
   line,
-  active,
+  state,
   time,
   compact,
   onSeek,
   registerRef,
 }: {
   line: LyricsLine;
-  active: boolean;
+  state: "active" | "past" | "future";
   time: number;
   compact: boolean;
   onSeek: (seconds: number) => void;
   registerRef: (el: HTMLButtonElement | null) => void;
 }) {
+  const active = state === "active";
   const reduce = useReducedMotion();
   // A silent stretch (no text in the LRC) becomes Apple's three breathing dots.
   if (!line.text) {
@@ -123,7 +124,7 @@ function Line({
         compact ? "py-1.5 text-[19px] leading-[1.35]" : "py-2 text-[27px] leading-[1.3]",
       )}
       initial={false}
-      animate={{ opacity: active ? 1 : 0.34, scale: active && !reduce ? 1.02 : 1 }}
+      animate={{ opacity: state === "active" ? 1 : state === "past" ? 0.22 : 0.42, scale: active && !reduce ? 1.02 : 1 }}
       transition={{
         opacity: { duration: 0.32, ease: "easeOut" },
         scale: { type: "spring", stiffness: 320, damping: 26 },
@@ -262,12 +263,12 @@ export function LyricsView({ compact = false }: { compact?: boolean }) {
     );
   } else {
     body = (
-      <div className="relative">
+      <div className="relative [text-shadow:0_2px_16px_rgb(0_0_0/0.35)]">
         {lyrics!.lines!.map((line, i) => (
           <Line
             key={`${line.time}-${i}`}
             line={line}
-            active={i === active}
+            state={i === active ? "active" : i < active ? "past" : "future"}
             time={time}
             compact={compact}
             onSeek={seek}
@@ -289,12 +290,12 @@ export function LyricsView({ compact = false }: { compact?: boolean }) {
         onTouchMove={suspendAuto}
         className={cn(
           "lyrics-fade scroll-area h-full overflow-y-auto overscroll-contain",
-          compact ? "pt-10 pb-56" : "pt-[16dvh] pb-[45dvh]",
+          compact ? "pt-10 pb-56" : "pt-14 pb-[36dvh]",
         )}
         role="region"
         aria-label={t.nowPlaying.tabLyrics}
       >
-        {head}
+        {compact ? head : null}
         {body}
         <p className="px-1 pt-6 text-[11px] text-fg-3">
           <a
@@ -320,7 +321,7 @@ export function LyricsView({ compact = false }: { compact?: boolean }) {
               setPaused(false);
               centerLine(active, true);
             }}
-            className="absolute bottom-3 left-1/2 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full bg-surface-3/90 px-4 text-xs font-medium text-fg shadow-lg ring-1 ring-line backdrop-blur-md"
+            className="glass-thin absolute bottom-3 left-1/2 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full px-4 text-xs font-medium text-fg"
           >
             <MicrophoneStageIcon size={14} /> {t.lyrics.backToLive}
           </motion.button>

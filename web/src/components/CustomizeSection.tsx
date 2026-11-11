@@ -92,7 +92,6 @@ export function LayoutSection() {
   const setPanelDocked = useUi((s) => s.setPanelDocked);
 
   const homeSections = [
-    ["homeShortcuts", t.customize.homeShortcuts],
     ["homeRecent", t.nav.recentlyPlayed],
     ["homeFavorites", t.home.yourFavorites],
   ] as const;

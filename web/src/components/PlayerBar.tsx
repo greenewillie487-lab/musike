@@ -4,7 +4,7 @@ import { useT } from "../i18n";
 import { selectCurrent, usePlayer, useStatusText } from "../player/player";
 import { useUi } from "../stores/ui";
 import { Artwork } from "./Artwork";
-import { FavoriteButton, ModeSwitch, Scrubber, Transport, Volume } from "./Controls";
+import { FavoriteButton, Scrubber, Transport, Volume } from "./Controls";
 import { IconButton } from "./IconButton";
 
 /** Desktop and tablet player: a floating island under the content. */
@@ -51,7 +51,6 @@ export function PlayerBar() {
         </div>
 
         <div className="flex items-center justify-end gap-1">
-          <ModeSwitch className="max-2xl:hidden" />
           <IconButton
             label={t.player.queue}
             size="sm"

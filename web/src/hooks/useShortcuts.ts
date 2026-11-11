@@ -65,14 +65,6 @@ export function useShortcuts() {
         case "R":
           p.cycleRepeat();
           break;
-        case "v":
-        case "V":
-          p.setPreferVideo(!p.preferVideo);
-          break;
-        case "f":
-        case "F":
-          if (p.mediaKind === "video") ui.setTheater(!ui.theater);
-          break;
         case "q":
         case "Q":
           ui.togglePanel("queue");

@@ -1,11 +1,11 @@
-import { ArrowLeftIcon, GearSixIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, CaretRightIcon, GearSixIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { useT } from "../i18n";
 import { cn } from "../lib/format";
 import { needsAttention, useSystem } from "../stores/system";
 import { useUi } from "../stores/ui";
-import { LogoMark } from "./Brand";
+import { AppIconMark } from "./Brand";
 import { IconButton } from "./IconButton";
 
 /** Sticky page header. On phones it carries the brand mark and the settings entry, since there is no rail. */
@@ -27,14 +27,14 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "safe-top sticky top-0 z-10 bg-bg/80 backdrop-blur-xl md:bg-surface-1/80",
+        "safe-top sticky top-0 z-10 border-b border-line/60 bg-bg/55 backdrop-blur-2xl backdrop-saturate-150 md:border-0 md:bg-surface-1/70",
         // Without a title or actions the header only exists for the phone brand bar.
         ((!title && !actions) || mobileOnly) && "md:hidden",
         className,
       )}
     >
       <div className="flex h-14 items-center gap-3 px-4 md:h-16 md:px-6">
-        <LogoMark className="size-7 shrink-0 text-accent-text md:hidden" />
+        <AppIconMark className="size-7 shrink-0 md:hidden" />
         {title && <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight md:text-xl">{title}</h1>}
         {!title && <span className="flex-1" />}
         {actions}
@@ -51,11 +51,14 @@ export function PageHeader({
   );
 }
 
-export function Section({ title, action, children, className }: { title: string; action?: ReactNode; children: ReactNode; className?: string }) {
+export function Section({ title, action, children, className, chevron }: { title: string; action?: ReactNode; children: ReactNode; className?: string; chevron?: boolean }) {
   return (
     <section className={cn("flex flex-col gap-3", className)}>
       <div className="flex items-end justify-between gap-4 px-4 md:px-6">
-        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        <h2 className="flex items-center gap-1 text-xl font-bold tracking-tight">
+          {title}
+          {chevron && <CaretRightIcon size={18} weight="bold" className="text-fg-3" aria-hidden="true" />}
+        </h2>
         {action}
       </div>
       {children}

@@ -17,7 +17,7 @@ import { useLibrary } from "../stores/library";
 import { needsAttention, useSystem } from "../stores/system";
 import { useUi } from "../stores/ui";
 import { Artwork } from "./Artwork";
-import { Logo, LogoMark } from "./Brand";
+import { AppIconMark, Logo } from "./Brand";
 import { NamePlaylistDialog } from "./Dialogs";
 
 const nav = [
@@ -105,7 +105,7 @@ export function Rail() {
     <aside className="island hidden w-[78px] shrink-0 md:flex wide:w-[256px]">
       <div className="island-core flex w-full flex-col overflow-hidden">
         <div className="flex h-16 items-center justify-center wide:justify-start wide:px-4 [@media(max-height:540px)]:h-12">
-          <LogoMark className="size-8 text-accent-text wide:hidden" />
+          <AppIconMark className="size-8 wide:hidden" />
           <span className="hidden wide:block">
             <Logo />
           </span>

@@ -53,6 +53,7 @@ export const pt: Messages = {
     favorites: "Favoritas",
     recentlyPlayed: "Tocadas recentemente",
     history: "Histórico",
+    playlists: "Playlists",
   },
 
   home: {
@@ -131,6 +132,7 @@ export const pt: Messages = {
     mute: "Mudo",
     unmute: "Ativar som",
     volume: "Volume",
+    volMax: "Volume no máximo",
     mode: "Modo de reprodução",
     audio: "Áudio",
     video: "Vídeo",
@@ -366,6 +368,7 @@ export const pt: Messages = {
     accent: "Cor de destaque",
     customColor: "Cor personalizada",
     colors: {
+      red: "Vermelho",
       volt: "Volt",
       mint: "Menta",
       aqua: "Água",

@@ -1,4 +1,4 @@
-import { ClockIcon, DotsThreeIcon, HeartIcon, VideoCameraIcon } from "@phosphor-icons/react";
+import { ClockIcon, DotsThreeIcon, HeartIcon } from "@phosphor-icons/react";
 import { memo, type MouseEvent } from "react";
 import { useT } from "../i18n";
 import { cn, formatTime } from "../lib/format";
@@ -56,9 +56,9 @@ const TrackRow = memo(function TrackRow({ track, position, onPlay, playlistId, s
       </span>
 
       <div className="pointer-events-none relative">
-        <Artwork src={track.thumb} className="size-11 rounded-[10px]" />
+        <Artwork src={track.thumb} className="size-11 rounded-md" />
         {isCurrent && (
-          <span className="absolute inset-0 grid place-items-center rounded-[10px] bg-black/45 md:hidden">
+          <span className="absolute inset-0 grid place-items-center rounded-md bg-black/45 md:hidden">
             <Equalizer live={isPlaying} />
           </span>
         )}
@@ -69,7 +69,6 @@ const TrackRow = memo(function TrackRow({ track, position, onPlay, playlistId, s
           {track.title}
         </p>
         <p className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-fg-2">
-          {track.kind === "video" && <VideoCameraIcon size={13} className="shrink-0 text-fg-3" aria-label={t.common.video} />}
           <span className="truncate">{track.artist || t.common.youtube}</span>
         </p>
       </div>

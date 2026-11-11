@@ -1,8 +1,9 @@
-import { QueueIcon, XIcon } from "@phosphor-icons/react";
+import { QueueIcon, RepeatIcon, RepeatOnceIcon, ShuffleIcon, XIcon } from "@phosphor-icons/react";
 import { useT } from "../i18n";
 import { cn, formatTime } from "../lib/format";
 import { usePlayer } from "../player/player";
 import { Artwork } from "./Artwork";
+import { IconButton } from "./IconButton";
 import { Equalizer } from "./Brand";
 
 export function QueueList({ compact = false }: { compact?: boolean }) {
@@ -15,6 +16,11 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
   const clearUpcoming = usePlayer((s) => s.clearUpcoming);
   const autoRadio = usePlayer((s) => s.autoRadio);
   const setAutoRadio = usePlayer((s) => s.setAutoRadio);
+  const shuffle = usePlayer((s) => s.shuffle);
+  const toggleShuffle = usePlayer((s) => s.toggleShuffle);
+  const repeat = usePlayer((s) => s.repeat);
+  const cycleRepeat = usePlayer((s) => s.cycleRepeat);
+  const RepeatGlyph = repeat === "one" ? RepeatOnceIcon : RepeatIcon;
 
   const current = queue[index];
   const upcoming = queue.slice(index + 1);
@@ -75,11 +81,31 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
           <h3 className="text-xs font-medium text-fg-3">
             {t.queue.upNext} <span className="font-mono">{upcoming.length}</span>
           </h3>
-          {upcoming.length > 0 && (
-            <button type="button" onClick={clearUpcoming} className="text-xs font-medium text-fg-2 hover:text-fg">
-              {t.queue.clear}
-            </button>
-          )}
+          <div className="flex items-center gap-0.5">
+            <IconButton
+              label={shuffle ? t.player.shuffleOn : t.player.shuffleOff}
+              active={shuffle}
+              size="sm"
+              onClick={toggleShuffle}
+              className={shuffle ? "text-fg" : undefined}
+            >
+              <ShuffleIcon size={18} />
+            </IconButton>
+            <IconButton
+              label={repeat === "one" ? t.player.repeatOne : repeat === "all" ? t.player.repeatAll : t.player.repeatOff}
+              active={repeat !== "off"}
+              size="sm"
+              onClick={cycleRepeat}
+              className={repeat !== "off" ? "text-fg" : undefined}
+            >
+              <RepeatGlyph size={18} />
+            </IconButton>
+            {upcoming.length > 0 && (
+              <button type="button" onClick={clearUpcoming} className="ml-1 text-xs font-medium text-fg-2 hover:text-fg">
+                {t.queue.clear}
+              </button>
+            )}
+          </div>
         </div>
         {upcoming.length ? (
           <ul>{upcoming.map((_, k) => row(index + 1 + k, false))}</ul>
