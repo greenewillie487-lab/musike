@@ -21,7 +21,7 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(function IconButt
       title={label}
       className={cn(
         "relative grid shrink-0 place-items-center rounded-full transition-[transform,color,background-color] duration-200 ease-out-expo",
-        "hover:bg-surface-3 active:scale-[0.92] disabled:pointer-events-none disabled:opacity-35",
+        "hover:bg-fg/10 active:scale-[0.92] disabled:pointer-events-none disabled:opacity-35",
         active ? "text-accent-text" : "text-fg-2 hover:text-fg",
         sizes[size],
         className,

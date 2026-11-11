@@ -16,7 +16,7 @@ function Row({ to, label, Icon }: { to: string; label: string; Icon: typeof Hear
     <li>
       <Link
         to={to}
-        className="flex items-center gap-4 rounded-xl px-3 py-3 transition-colors hover:bg-surface-2 md:px-4"
+        className="flex items-center gap-4 rounded-xl px-3 py-3 transition-colors hover:bg-fg/10 md:px-4"
       >
         <Icon size={22} weight="fill" className="shrink-0 text-accent-text" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
@@ -67,7 +67,7 @@ export default function Library() {
               <li key={p.id}>
                 <Link
                   to={paths.playlist(p.id)}
-                  className="group flex items-center gap-3 rounded-[16px] p-2 transition-colors hover:bg-surface-2 md:flex-col md:items-stretch md:gap-3 md:p-3"
+                  className="group flex items-center gap-3 rounded-[16px] p-2 transition-colors hover:bg-fg/10 md:flex-col md:items-stretch md:gap-3 md:p-3"
                 >
                   <Cover
                     kind="playlist"

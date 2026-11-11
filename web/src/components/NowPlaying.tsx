@@ -89,12 +89,12 @@ function PanelBody({ tab }: { tab: PanelTab; slot?: number }) {
       <button
         type="button"
         onClick={() => void startRadio(track)}
-        className="flex h-11 items-center justify-center gap-2 rounded-full bg-surface-1 text-sm font-medium ring-1 ring-line transition-colors hover:bg-surface-2 active:scale-[0.98]"
+        className="glass-thin flex h-11 items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors hover:bg-fg/10 active:scale-[0.98]"
       >
         <RadioIcon size={18} /> {t.nowPlaying.startRadio}
       </button>
       {nextUp && (
-        <div className="rounded-[12px] bg-surface-1 p-3 ring-1 ring-line">
+        <div className="glass-thin rounded-[14px] p-3">
           <p className="pb-2 text-xs font-medium text-fg-3">{t.nowPlaying.upNext}</p>
           <div className="flex items-center gap-3">
             <Artwork src={nextUp.thumb} className="size-10 rounded-[6px]" />
@@ -128,7 +128,7 @@ function PanelTabs({ tab, onTab }: { tab: PanelTab; onTab: (t: PanelTab) => void
           onClick={() => onTab(id)}
           className={cn(
             "h-9 rounded-full px-4 text-sm font-medium transition-colors",
-            tab === id ? "bg-surface-4 text-fg" : "text-fg-2 hover:text-fg",
+            tab === id ? "bg-fg/15 text-fg" : "text-fg-2 hover:text-fg",
           )}
         >
           {label}
@@ -219,7 +219,7 @@ function SheetBar({ view, onView }: { view: "player" | "lyrics" | "queue"; onVie
         label={view === "lyrics" ? t.nowPlaying.backToPlayer : t.nowPlaying.showLyrics}
         active={view === "lyrics"}
         onClick={() => onView(view === "lyrics" ? "player" : "lyrics")}
-        className="text-fg"
+        className="glass-thin text-fg"
       >
         <QuotesIcon size={22} weight={view === "lyrics" ? "fill" : "regular"} />
       </IconButton>
@@ -227,7 +227,7 @@ function SheetBar({ view, onView }: { view: "player" | "lyrics" | "queue"; onVie
         label={view === "queue" ? t.nowPlaying.backToPlayer : t.nowPlaying.showQueue}
         active={view === "queue"}
         onClick={() => onView(view === "queue" ? "player" : "queue")}
-        className="-mr-2 text-fg"
+        className="glass-thin -mr-2 text-fg"
       >
         <QueueIcon size={22} weight={view === "queue" ? "fill" : "regular"} />
       </IconButton>

@@ -28,7 +28,7 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
   if (!current) {
     return (
       <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-        <span className="grid size-14 place-items-center rounded-[14px] bg-surface-3 text-fg-3">
+        <span className="glass-thin grid size-14 place-items-center rounded-[14px] text-fg-3">
           <QueueIcon size={26} />
         </span>
         <p className="font-medium">{t.queue.emptyTitle}</p>
@@ -40,7 +40,7 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
   const row = (i: number, isCurrent: boolean) => {
     const track = queue[i];
     return (
-      <li key={`${track.id}-${i}`} className="group relative flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-surface-3">
+      <li key={`${track.id}-${i}`} className="group relative flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-fg/10">
         <button type="button" onClick={() => jumpTo(i)} className="absolute inset-0 rounded-xl" aria-label={t.common.playX(track.title)} />
         <Artwork src={track.thumb} className="pointer-events-none size-10 rounded-[8px]" />
         <div className="pointer-events-none min-w-0 flex-1">
@@ -59,7 +59,7 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
               onClick={() => removeAt(i)}
               aria-label={t.queue.removeX(track.title)}
               title={t.queue.remove}
-              className="relative z-10 hidden size-8 place-items-center rounded-full text-fg-2 hover:bg-surface-4 hover:text-fg group-hover:grid max-md:grid"
+              className="relative z-10 hidden size-8 place-items-center rounded-full text-fg-2 hover:bg-fg/15 hover:text-fg group-hover:grid max-md:grid"
             >
               <XIcon size={16} />
             </button>
@@ -116,7 +116,7 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
         )}
       </section>
 
-      <label className="mx-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-surface-1 px-3 py-2.5 ring-1 ring-line">
+      <label className="glass-thin mx-2 flex cursor-pointer items-center justify-between gap-3 rounded-2xl px-3 py-2.5">
         <span>
           <span className="block text-sm font-medium">{t.queue.autoRadio}</span>
           <span className="block text-xs text-fg-2">{t.queue.autoRadioBody}</span>
@@ -131,7 +131,7 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
           aria-hidden="true"
           className={cn(
             "relative h-6 w-10 shrink-0 rounded-full transition-colors duration-200 peer-focus-visible:outline-2 peer-focus-visible:outline-accent",
-            autoRadio ? "bg-accent" : "bg-surface-4",
+            autoRadio ? "bg-accent" : "bg-fg/20",
           )}
         >
           <span

@@ -70,7 +70,7 @@ function SwitchRow({ label, body, checked, onChange }: { label: string; body?: s
         aria-hidden="true"
         className={cn(
           "relative h-6 w-10 shrink-0 rounded-full transition-colors duration-200 peer-focus-visible:outline-2 peer-focus-visible:outline-accent",
-          checked ? "bg-accent" : "bg-surface-4",
+          checked ? "bg-accent" : "bg-fg/20",
         )}
       >
         <span
@@ -99,7 +99,7 @@ export function LayoutSection() {
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-xs font-medium text-fg-3">{t.customize.layout}</h3>
-      <div className="flex flex-col divide-y divide-line rounded-[16px] bg-surface-1 ring-1 ring-line">
+      <div className="glass-thin flex flex-col divide-y divide-line rounded-[16px]">
         <SwitchRow label={t.customize.panel} body={t.customize.panelBody} checked={panelOpen} onChange={setPanelDocked} />
         <SwitchRow label={t.customize.sidebarPlaylists} checked={a.sidebarPlaylists} onChange={(v) => a.set({ sidebarPlaylists: v })} />
         <SwitchRow

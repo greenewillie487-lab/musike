@@ -48,7 +48,7 @@ export default function Home() {
       {status === "loading" && <TrackListSkeleton rows={6} />}
 
       {empty && (
-        <div className="mx-4 flex flex-col items-start gap-5 rounded-[20px] bg-surface-2 p-6 ring-1 ring-line md:mx-6 md:flex-row md:items-center md:p-8">
+        <div className="glass-thin mx-4 flex flex-col items-start gap-5 rounded-[20px] p-6 md:mx-6 md:flex-row md:items-center md:p-8">
           <AppIconMark className="size-16 shrink-0 rounded-[16px]" />
           <div className="flex-1">
             <p className="text-xl font-semibold tracking-tight">{t.home.startTitle}</p>

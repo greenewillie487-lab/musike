@@ -99,7 +99,7 @@ export function Slider({
       onKeyDown={onKeyDown}
       className={cn("group relative flex h-5 cursor-pointer touch-none items-center select-none", className)}
     >
-      <div ref={track} className="relative h-1 w-full overflow-hidden rounded-full bg-fg/25 transition-[height] duration-200 group-hover:h-1.5">
+      <div ref={track} className="relative h-1.5 w-full overflow-hidden rounded-full bg-fg/15 shadow-[inset_0_1px_0_rgb(255_255_255/0.22),inset_0_-1px_0_rgb(0_0_0/0.18)] transition-[height] duration-200 group-hover:h-2">
         <div className="absolute inset-y-0 left-0 bg-fg-3/40" style={{ width: `${bufPct}%` }} />
         <div className="absolute inset-y-0 left-0 rounded-full bg-fg" style={{ width: `${pct}%` }} />
       </div>
