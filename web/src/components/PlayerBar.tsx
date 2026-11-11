@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import { cn } from "../lib/format";
 import { useT } from "../i18n";
 import { NOW_PLAYING_HASH } from "../lib/routes";
-import { useMediaQuery, XL } from "../hooks/useMediaQuery";
 import { selectCurrent, usePlayer, useStatusText } from "../player/player";
 import { useUi } from "../stores/ui";
 import { Artwork } from "./Artwork";
@@ -16,14 +15,10 @@ export function PlayerBar() {
   const statusText = useStatusText();
   const t = useT();
   const status = usePlayer((s) => s.status);
-  const panelOpen = useUi((s) => s.panelOpen || s.drawerOpen);
-  const panelTab = useUi((s) => s.panelTab);
-  const togglePanel = useUi((s) => s.togglePanel);
   const setShortcutsOpen = useUi((s) => s.setShortcutsOpen);
-  const isXl = useMediaQuery(XL);
   const navigate = useNavigate();
-  // Desktop keeps the docked panel; tablets open the full-screen sheet, like Apple Music on iPad.
-  const openNowPlaying = () => (isXl ? togglePanel("playing") : navigate({ hash: NOW_PLAYING_HASH }));
+  // One behavior everywhere: tap opens the full-screen Now Playing sheet (Apple Music style).
+  const openNowPlaying = () => navigate({ hash: NOW_PLAYING_HASH });
 
   return (
     <div className="island shrink-0">
@@ -61,7 +56,6 @@ export function PlayerBar() {
           <IconButton
             label={t.player.queue}
             size="sm"
-            active={isXl && panelOpen && panelTab === "queue"}
             onClick={openNowPlaying}
           >
             <QueueIcon size={18} />
@@ -69,7 +63,6 @@ export function PlayerBar() {
           <IconButton
             label={t.player.nowPlayingPanel}
             size="sm"
-            active={isXl && panelOpen && panelTab === "playing"}
             onClick={openNowPlaying}
           >
             <SidebarSimpleIcon size={18} mirrored />
