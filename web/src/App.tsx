@@ -97,7 +97,8 @@ export default function App() {
     if (saved) requestAnimationFrame(() => main.current?.scrollTo({ top: saved }));
   }, [location.pathname]);
 
-  const sheetOpen = !isMd && location.hash === SHEET_HASH;
+  // The full-screen Now Playing sheet works at every width (Apple Music on iPad opens full-screen too).
+  const sheetOpen = location.hash === SHEET_HASH;
   const closeSheet = () => {
     // Pop the history entry the sheet pushed, so Back and the close button behave the same.
     const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;

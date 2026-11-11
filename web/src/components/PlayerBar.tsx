@@ -1,6 +1,9 @@
 import { KeyboardIcon, QueueIcon, SidebarSimpleIcon } from "@phosphor-icons/react";
+import { useNavigate } from "react-router";
 import { cn } from "../lib/format";
 import { useT } from "../i18n";
+import { NOW_PLAYING_HASH } from "../lib/routes";
+import { useMediaQuery, XL } from "../hooks/useMediaQuery";
 import { selectCurrent, usePlayer, useStatusText } from "../player/player";
 import { useUi } from "../stores/ui";
 import { Artwork } from "./Artwork";
@@ -17,6 +20,10 @@ export function PlayerBar() {
   const panelTab = useUi((s) => s.panelTab);
   const togglePanel = useUi((s) => s.togglePanel);
   const setShortcutsOpen = useUi((s) => s.setShortcutsOpen);
+  const isXl = useMediaQuery(XL);
+  const navigate = useNavigate();
+  // Desktop keeps the docked panel; tablets open the full-screen sheet, like Apple Music on iPad.
+  const openNowPlaying = () => (isXl ? togglePanel("playing") : navigate({ hash: NOW_PLAYING_HASH }));
 
   return (
     <div className="island shrink-0">
@@ -26,7 +33,7 @@ export function PlayerBar() {
             <>
               <button
                 type="button"
-                onClick={() => togglePanel("playing")}
+                onClick={openNowPlaying}
                 aria-label={t.player.showNowPlaying}
                 className="group relative shrink-0 rounded-[10px] transition-transform active:scale-[0.96]"
               >
@@ -54,16 +61,16 @@ export function PlayerBar() {
           <IconButton
             label={t.player.queue}
             size="sm"
-            active={panelOpen && panelTab === "queue"}
-            onClick={() => togglePanel("queue")}
+            active={isXl && panelOpen && panelTab === "queue"}
+            onClick={openNowPlaying}
           >
             <QueueIcon size={18} />
           </IconButton>
           <IconButton
             label={t.player.nowPlayingPanel}
             size="sm"
-            active={panelOpen && panelTab === "playing"}
-            onClick={() => togglePanel("playing")}
+            active={isXl && panelOpen && panelTab === "playing"}
+            onClick={openNowPlaying}
           >
             <SidebarSimpleIcon size={18} mirrored />
           </IconButton>

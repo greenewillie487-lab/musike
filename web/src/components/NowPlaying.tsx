@@ -263,7 +263,7 @@ export function NowPlayingSheet({ open, onClose }: { open: boolean; onClose: () 
           onDragEnd={(_, info) => {
             if (info.offset.y > 120 || info.velocity.y > 700) onClose();
           }}
-          className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-bg md:hidden"
+          className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-bg"
         >
           {/* The ambient wash: the cover's own colors, muted like Apple's, crossfading on track change. */}
           <AnimatePresence initial={false}>
@@ -290,7 +290,7 @@ export function NowPlayingSheet({ open, onClose }: { open: boolean; onClose: () 
             />
           </div>
 
-          <div className="overlay-top relative flex min-h-0 flex-1 flex-col px-6">
+          <div className="overlay-top relative mx-auto flex min-h-0 w-full max-w-[640px] flex-1 flex-col px-6">
             <div className="flex h-14 touch-none items-center justify-between" onPointerDown={(e) => drag.start(e)}>
               <IconButton label={t.common.close} onClick={onClose} className="-ml-2 text-fg">
                 <CaretDownIcon size={24} />
