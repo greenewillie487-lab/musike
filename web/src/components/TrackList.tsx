@@ -113,10 +113,13 @@ interface ListProps {
   playlistId?: string;
   showAlbum?: boolean;
   header?: boolean;
+  /** False = playing a row queues only that track (search results behave like Apple/YT Music). */
+  queueAll?: boolean;
 }
 
-export function TrackList({ tracks, context, playlistId, showAlbum: albumWanted = true, header = true }: ListProps) {
+export function TrackList({ tracks, context, playlistId, showAlbum: albumWanted = true, header = true, queueAll = true }: ListProps) {
   const playList = usePlayer((s) => s.playList);
+  const playTrack = usePlayer((s) => s.playTrack);
   const t = useT();
   // Pages ask for the album column where it makes sense; Settings can turn it off everywhere.
   const showAlbum = useAppearance((s) => s.albumColumn) && albumWanted;
@@ -149,7 +152,7 @@ export function TrackList({ tracks, context, playlistId, showAlbum: albumWanted 
             position={i}
             playlistId={playlistId}
             showAlbum={showAlbum}
-            onPlay={() => playList(context ?? tracks, i)}
+            onPlay={() => (queueAll ? playList(context ?? tracks, i) : playTrack(t))}
           />
         ))}
       </ul>

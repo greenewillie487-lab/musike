@@ -370,7 +370,9 @@ export default function Search() {
           />
         )}
 
-        {!linkId && state === "ok" && results && results.length > 0 && <TrackList tracks={results} showAlbum={kind === "song"} />}
+        {!linkId && state === "ok" && results && results.length > 0 && (
+          <TrackList tracks={results} showAlbum={kind === "song"} queueAll={false} />
+        )}
 
         {!linkId && state === "idle" && (
           <div className="px-2 md:px-3">
