@@ -33,6 +33,7 @@
   --scrim: rgb(0 0 0 / 0.6);
   --danger: #ff453a;
   /* Liquid-glass material tokens (web implementation of the iOS 26 material) */
+  --ambient-tint: transparent;
   --glass-background: rgb(28 28 30 / 0.52);
   --glass-border: rgb(255 255 255 / 0.16);
   --glass-blur: 28px;
@@ -342,4 +343,16 @@
   .glass, .glass-thin { border-color: rgb(255 255 255 / 0.45); }
   [data-theme="light"] .glass, [data-theme="light"] .glass-thin { border-color: rgb(0 0 0 / 0.35); }
   .island { border-color: rgb(255 255 255 / 0.35); }
+}
+
+/* Liquid Glass content infusion (Apple: "reflects color of surrounding content"):
+   the glass surfaces pick up a subtle wash of the current artwork's ambient tint.
+   color-mix is supported on iOS 16.2+/WKWebView; older engines keep the plain token. */
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .glass {
+    background: color-mix(in srgb, var(--glass-background) 86%, var(--ambient-tint) 14%);
+  }
+  .glass-thin {
+    background: color-mix(in srgb, var(--control-background) 88%, var(--ambient-tint) 12%);
+  }
 }

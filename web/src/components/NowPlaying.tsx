@@ -243,6 +243,13 @@ export function NowPlayingSheet({ open, onClose }: { open: boolean; onClose: () 
   const [view, setView] = useState<"player" | "lyrics" | "queue">("player");
   const ambient = useAmbient(track?.art ?? track?.thumb);
   const t = useT();
+  // Liquid-glass behavior from Apple's docs: the material reflects the color of the
+  // content around it. Publish the cover's tint so the glass surfaces pick it up.
+  useEffect(() => {
+    if (!track) return;
+    document.documentElement.style.setProperty("--ambient-tint", ambient.a);
+    document.documentElement.style.setProperty("--ambient-tint-b", ambient.b);
+  }, [track?.thumb, ambient.a, ambient.b]);
 
   return createPortal(
     <AnimatePresence onExitComplete={() => setView("player")}>
