@@ -1,4 +1,4 @@
-import { InfinityIcon, QueueIcon, RepeatIcon, RepeatOnceIcon, ShuffleIcon, XIcon } from "@phosphor-icons/react";
+import { CaretDownIcon, CaretUpIcon, InfinityIcon, QueueIcon, RepeatIcon, RepeatOnceIcon, ShuffleIcon, XIcon } from "@phosphor-icons/react";
 import { useT } from "../i18n";
 import { cn, formatTime } from "../lib/format";
 import { usePlayer } from "../player/player";
@@ -11,6 +11,8 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
   const queue = usePlayer((s) => s.queue);
   const index = usePlayer((s) => s.index);
   const suggestedFrom = usePlayer((s) => s.suggestedFrom);
+  const queueReasons = usePlayer((s) => s.queueReasons);
+  const reorderQueue = usePlayer((s) => s.reorderQueue);
   const live = usePlayer((s) => s.status === "playing" || s.status === "loading");
   const jumpTo = usePlayer((s) => s.jumpTo);
   const removeAt = usePlayer((s) => s.removeAt);
@@ -59,16 +61,41 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
             <span className="pointer-events-none font-mono text-xs text-fg-3 tabular-nums group-hover:hidden">
               {track.duration ? formatTime(track.duration) : ""}
             </span>
-            <button
-              type="button"
-              onClick={() => removeAt(i)}
-              aria-label={t.queue.removeX(track.title)}
-              title={t.queue.remove}
-              className="relative z-10 hidden size-8 place-items-center rounded-full text-fg-2 hover:bg-fg/15 hover:text-fg group-hover:grid max-md:grid"
-            >
-              <XIcon size={16} />
-            </button>
+            <span className="relative z-10 hidden items-center group-hover:flex max-md:flex">
+              <button
+                type="button"
+                onClick={() => reorderQueue(i, i - 1)}
+                aria-label={t.queue.moveUp}
+                title={t.queue.moveUp}
+                disabled={i - 1 <= index}
+                className="grid size-7 place-items-center rounded-full text-fg-2 hover:bg-fg/15 hover:text-fg disabled:opacity-30"
+              >
+                <CaretUpIcon size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => reorderQueue(i, i + 1)}
+                aria-label={t.queue.moveDown}
+                title={t.queue.moveDown}
+                disabled={i + 1 >= queue.length}
+                className="grid size-7 place-items-center rounded-full text-fg-2 hover:bg-fg/15 hover:text-fg disabled:opacity-30"
+              >
+                <CaretDownIcon size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => removeAt(i)}
+                aria-label={t.queue.removeX(track.title)}
+                title={t.queue.remove}
+                className="grid size-7 place-items-center rounded-full text-fg-2 hover:bg-fg/15 hover:text-fg"
+              >
+                <XIcon size={15} />
+              </button>
+            </span>
           </>
+        )}
+        {!isCurrent && queueReasons[i] && (
+          <span className="pointer-events-none absolute right-2 bottom-0.5 hidden truncate text-[10px] text-fg-3 md:block">{queueReasons[i]}</span>
         )}
       </li>
     );

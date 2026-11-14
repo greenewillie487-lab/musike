@@ -3,6 +3,14 @@ import { getT, useT } from "../i18n";
 import { api, capabilities, explainStreamError, streamSource, systemMedia, type ApiError, type ErrorCode } from "../lib/api";
 import { createAudio } from "../lib/audio";
 import { shuffleSpread } from "../lib/format";
+import {
+  logEvent,
+  loadEvents,
+  buildProfile,
+  generateSuggestions,
+  DEFAULT_CONFIG as CFG,
+  type QueueSource,
+} from "../lib/recommender";
 import type { Track } from "../lib/types";
 import { useLibrary } from "../stores/library";
 import { openSettings } from "../stores/system";
@@ -41,6 +49,10 @@ interface PlayerState {
   autoRadio: boolean;
   /** Queue index where the autoplay suggestions start; null = none queued. */
   suggestedFrom: number | null;
+  /** Phase 2 queue categories, aligned with queue: manual | play_next | autoplay | null(context). */
+  queueSources: (QueueSource | null)[];
+  /** Honest provenance per suggestion (Phase 12), aligned with queue. */
+  queueReasons: (string | null)[];
 
   playList: (tracks: Track[], start?: number) => void;
   playTrack: (track: Track) => void;
@@ -61,6 +73,7 @@ interface PlayerState {
   setPreferVideo: (on: boolean) => void;
   setQuality: (q: Quality) => void;
   setAutoRadio: (on: boolean) => void;
+  reorderQueue: (from: number, to: number) => void;
 }
 
 // Media elements live outside React so playback survives any re-render or route change.
@@ -84,6 +97,8 @@ const STORAGE_KEY = "musike:player";
 
 interface Saved {
   queue: Track[];
+  queueSources: (QueueSource | null)[] | null;
+  queueReasons: (string | null)[] | null;
   original: Track[] | null;
   index: number;
   position: number;
@@ -298,6 +313,33 @@ export const usePlayer = create<PlayerState>((set, get) => {
     return out.map((o) => o.t);
   }
 
+  let sessionAutoplayCount = 0;
+  function appendSuggestions(picks: { track: Track; reason: string }[]) {
+    if (!picks.length) return;
+    const s = get();
+    const sources = [...s.queueSources];
+    const reasons = [...s.queueReasons];
+    for (const p of picks) {
+      sources.push("autoplay");
+      reasons.push(p.reason);
+      sessionAutoplayCount++;
+    }
+    set((st) => ({
+      queue: [...st.queue, ...picks.map((p) => p.track)],
+      original: st.original ? [...st.original, ...picks.map((p) => p.track)] : null,
+      queueSources: sources,
+      queueReasons: reasons,
+      suggestedFrom: deriveSuggestedFrom(sources),
+    }));
+    warm(picks.slice(0, 2).map((p) => p.track.id));
+  }
+
+  /** Phase 2: the autoplay boundary derives from queue categories — first autoplay source. */
+  function deriveSuggestedFrom(sources: (QueueSource | null)[]): number | null {
+    const at = sources.indexOf("autoplay");
+    return at >= 0 ? at : null;
+  }
+
   /** Apple's ∞ brain: as the queue runs low, fetch radio for the track playing right now
    *  (the song the user chose), and park a few suggestions at the end, marked in the queue. */
   let extending = false;
@@ -307,22 +349,35 @@ export const usePlayer = create<PlayerState>((set, get) => {
     if (s.queue.length - s.index > 2) return;
     const seed = s.queue[s.index];
     if (!seed) return;
+    const { history: listenHistory } = useLibrary.getState();
     extending = true;
     try {
+      const remaining = s.queue.length - s.index - 1;
+      if (remaining >= CFG.autoplay.replenish_below) return;
+      const want = Math.max(0, CFG.autoplay.target_upcoming_recommendations - remaining);
       const pool = await api.radio(seed.id, seed.artist);
-      let more = pickSuggestions(pool, seed, 5);
-      // Radio pool thin? Apple falls back to your own listening history — recency-weighted.
-      if (!more.length) {
-        const { history: listenHistory } = useLibrary.getState();
-        more = pickSuggestions(listenHistory.slice(1, 26).filter((t) => t.id !== seed.id), seed, 5);
+      const picks = generateSuggestions({
+        seed, index: s.index, pool,
+        queuedIds: new Set(s.queue.map((t) => t.id)),
+        recentIds: new Set(listenHistory.slice(0, 30).map((t) => t.id)),
+        affinity: buildProfile(loadEvents()).artistAffinity,
+        config: CFG,
+        sessionAutoplayCount: sessionAutoplayCount,
+      }).slice(0, Math.min(want, CFG.autoplay.maximum_recommendations_per_session - sessionAutoplayCount));
+      if (!picks.length) {
+        // Radio pool thin? Apple falls back to your own listening history — recency-weighted.
+        const fallback = generateSuggestions({
+          seed, index: s.index, pool: listenHistory.slice(1, 26).filter((t) => t.id !== seed.id),
+          queuedIds: new Set(s.queue.map((t) => t.id)),
+          recentIds: new Set(listenHistory.slice(0, 30).map((t) => t.id)),
+          affinity: buildProfile(loadEvents()).artistAffinity,
+          config: CFG, sessionAutoplayCount: sessionAutoplayCount,
+        }).slice(0, want);
+        if (!fallback.length) return;
+        appendSuggestions(fallback);
+        return;
       }
-      if (!more.length) return;
-      set((st) => ({
-        queue: [...st.queue, ...more],
-        original: st.original ? [...st.original, ...more] : null,
-        suggestedFrom: st.suggestedFrom ?? st.queue.length,
-      }));
-      warm(more.slice(0, 2).map((t) => t.id));
+      appendSuggestions(picks);
     } catch {
       /* silent: the queue keeps playing; the next track load tries again */
     } finally {
@@ -342,15 +397,26 @@ export const usePlayer = create<PlayerState>((set, get) => {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 1800));
+        const remaining = s.queue.length - s.index - 1;
+        const want = Math.max(0, CFG.autoplay.target_upcoming_recommendations - remaining);
         const pool = await api.radio(last.id, last.artist).catch(() => [] as Track[]);
         let candidates = pickSuggestions(pool, last, 25);
         if (!candidates.length) candidates = pickSuggestions(listenHistory.slice(1, 40).filter((t) => t.id !== last.id), last, 25);
-        const more = candidates.slice(0, 25); // pickSuggestions already excluded queued + recent plays
+        const more = candidates.slice(0, Math.min(25, Math.max(want, 5), CFG.autoplay.maximum_recommendations_per_session - sessionAutoplayCount));
         if (!more.length) throw new Error("empty");
+        const sources = [...s.queueSources];
+        const reasons = [...s.queueReasons];
+        for (let k = 0; k < more.length; k++) {
+          sources.push("autoplay");
+          reasons.push("continuing from " + last.title);
+          sessionAutoplayCount++;
+        }
         set((st) => ({
           queue: [...st.queue, ...more],
           original: st.original ? [...st.original, ...more] : null,
-          suggestedFrom: st.suggestedFrom ?? st.queue.length,
+          queueSources: sources,
+          queueReasons: reasons,
+          suggestedFrom: deriveSuggestedFrom(sources),
         }));
         warm(more.slice(0, 2).map((t) => t.id));
         toast(getT().player.radioContinuing(last.title));
@@ -368,6 +434,13 @@ export const usePlayer = create<PlayerState>((set, get) => {
     if (!track || recordedToken === token) return;
     recordedToken = token;
     useLibrary.getState().recordPlay(track);
+    // Phase 4 event log: starts and autoplay plays feed the listener profile.
+    const src = s.queueSources[s.index] ?? null;
+    logEvent({
+      type: src === "autoplay" ? "autoplay_track_played" : "track_started",
+      trackId: track.id, artist: track.artist, source: src,
+      completion: 0, listenedSeconds: 0, at: Date.now(),
+    });
     // Warm up the next two tracks (and, in Video mode, find and resolve their clips) so the
     // queue flows without on-demand resolves mid-listen.
     for (const upcoming of [s.queue[s.index + 1], s.queue[s.index + 2]]) {
@@ -386,6 +459,15 @@ export const usePlayer = create<PlayerState>((set, get) => {
         play(media);
       }
       return;
+    }
+    const finished = s.queue[s.index];
+    if (finished) {
+      const src = s.queueSources[s.index] ?? null;
+      logEvent({
+        type: "track_completed",
+        trackId: finished.id, artist: finished.artist, source: src,
+        completion: 1, listenedSeconds: finished.duration, at: Date.now(),
+      });
     }
     if (s.index < s.queue.length - 1) return load(s.index + 1);
     if (s.repeat === "all" && s.queue.length) return load(0);
@@ -491,6 +573,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
   return {
     queue: saved.queue ?? [],
+    queueSources: saved.queueSources ?? (saved.queue ?? []).map(() => null),
+    queueReasons: saved.queueReasons ?? (saved.queue ?? []).map(() => null),
     original: saved.original ?? null,
     index: saved.index ?? 0,
     status: saved.queue?.length ? "paused" : "idle",
@@ -514,12 +598,13 @@ export const usePlayer = create<PlayerState>((set, get) => {
     playList: (tracks, start = 0) => {
       if (!tracks.length) return;
       const first = tracks[start] ?? tracks[0];
+      const nulls = () => tracks.map(() => null);
       if (get().shuffle) {
         const rest = tracks.filter((_, i) => i !== start);
-        set({ queue: [first, ...shuffleSpread(rest)], original: tracks.slice(), suggestedFrom: null });
+        set({ queue: [first, ...shuffleSpread(rest)], original: tracks.slice(), queueSources: [null, ...nulls().slice(1)], queueReasons: tracks.map(() => null), suggestedFrom: null });
         load(0);
       } else {
-        set({ queue: tracks.slice(), original: null, suggestedFrom: null });
+        set({ queue: tracks.slice(), original: null, queueSources: nulls(), queueReasons: tracks.map(() => null), suggestedFrom: null });
         load(start);
       }
     },
@@ -534,7 +619,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
       }
       // A fresh choice owns the queue: the old upcoming tail dies and the radio
       // re-seeds from this song — Apple/YT Music behavior. One flow, no stale mix.
-      set({ queue: [track], original: null, suggestedFrom: null, index: 0 });
+      set({ queue: [track], original: null, suggestedFrom: null, queueSources: [null], queueReasons: [null], index: 0 });
       load(0);
     },
 
@@ -552,7 +637,16 @@ export const usePlayer = create<PlayerState>((set, get) => {
     addToQueue: (track) => {
       const s = get();
       if (!s.queue.length) return get().playList([track]);
-      set({ queue: [...s.queue, track], original: s.original ? [...s.original, track] : null });
+      const sources = [...s.queueSources];
+      // Priority: user-queued items land before autoplay recommendations.
+      let at = sources.indexOf("autoplay");
+      if (at < 0) at = s.queue.length;
+      sources.splice(at, 0, "manual");
+      const reasons = [...s.queueReasons];
+      reasons.splice(at, 0, null);
+      const queue = [...s.queue.slice(0, at), track, ...s.queue.slice(at)];
+      const original = s.original ? [...s.original, track] : null;
+      set({ queue, original, queueSources: sources, queueReasons: reasons, suggestedFrom: deriveSuggestedFrom(sources) });
       toast(getT().player.addedToQueue(track.title));
     },
 
@@ -562,10 +656,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const removed = s.queue[i];
       const queue = s.queue.filter((_, j) => j !== i);
       const original = s.original?.filter((t) => t !== removed) ?? null;
-      if (i < s.index) return set({ queue, original, index: s.index - 1, suggestedFrom: null });
-      if (i > s.index) return set({ queue, original, suggestedFrom: null });
+      const sources = s.queueSources.filter((_, j) => j !== i);
+      const reasons = s.queueReasons.filter((_, j) => j !== i);
+      if (i < s.index) return set({ queue, original, index: s.index - 1, queueSources: sources, queueReasons: reasons, suggestedFrom: deriveSuggestedFrom(sources) });
+      if (i > s.index) return set({ queue, original, queueSources: sources, queueReasons: reasons, suggestedFrom: deriveSuggestedFrom(sources) });
       // Removing the current track: move on to whatever takes its place.
-      set({ queue, original, suggestedFrom: null });
+      set({ queue, original, queueSources: sources, queueReasons: reasons, suggestedFrom: deriveSuggestedFrom(sources) });
       if (queue[i]) load(i, { autoplay: s.status === "playing" });
       else {
         activeMedia()?.pause();
@@ -576,10 +672,25 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     jumpTo: (i) => load(i),
 
+    reorderQueue: (from: number, to: number) => {
+      const s = get();
+      if (from === to || from < s.index || to < s.index || from >= s.queue.length) return;
+      const queue = [...s.queue];
+      const sources = [...s.queueSources];
+      const reasons = [...s.queueReasons];
+      const moved = queue.splice(from, 1)[0];
+      const movedSource = sources.splice(from, 1)[0] ?? null;
+      const movedReason = reasons.splice(from, 1)[0] ?? null;
+      queue.splice(to, 0, moved);
+      sources.splice(to, 0, movedSource);
+      reasons.splice(to, 0, movedReason);
+      set({ queue, queueSources: sources, queueReasons: reasons, suggestedFrom: deriveSuggestedFrom(sources) });
+    },
+
     clearUpcoming: () => {
       const s = get();
       const keep = s.queue.slice(0, s.index + 1);
-      set({ queue: keep, original: s.original ? keep.slice() : null, suggestedFrom: null });
+      set({ queue: keep, original: s.original ? keep.slice() : null, queueSources: keep.map(() => null), queueReasons: keep.map(() => null), suggestedFrom: null });
     },
 
     startRadio: async (track) => {
@@ -611,6 +722,15 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     next: () => {
       const s = get();
+      const current = s.queue[s.index];
+      if (current && s.duration > 0 && s.position < 0.8 * s.duration) {
+        const src = s.queueSources[s.index] ?? null;
+        logEvent({
+          type: src === "autoplay" ? "autoplay_track_skipped" : "track_skipped",
+          trackId: current.id, artist: current.artist, source: src,
+          completion: s.position / s.duration, listenedSeconds: s.position, at: Date.now(),
+        });
+      }
       if (s.index < s.queue.length - 1) return load(s.index + 1);
       if (s.repeat === "all" && s.queue.length) return load(0);
       if (s.autoRadio) void continueWithRadio();
@@ -654,7 +774,11 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const current = s.queue[s.index];
       if (!s.shuffle) {
         const rest = s.queue.filter((_, i) => i !== s.index);
-        set({ shuffle: true, original: s.queue, queue: current ? [current, ...shuffleSpread(rest)] : shuffleSpread(rest), index: 0, suggestedFrom: null });
+        const order = current ? [current, ...shuffleSpread(rest)] : shuffleSpread(rest);
+        // keep source alignment: current keeps its source; the shuffled rest carries theirs
+        const restSources = s.queueSources.filter((_, i) => i !== s.index);
+        const restReasons = s.queueReasons.filter((_, i) => i !== s.index);
+        set({ shuffle: true, original: s.queue, queue: order, queueSources: current ? [s.queueSources[s.index], ...restSources] : restSources, queueReasons: current ? [s.queueReasons[s.index], ...restReasons] : restReasons, index: 0, suggestedFrom: deriveSuggestedFrom(current ? [s.queueSources[s.index], ...restSources] : restSources) });
         return;
       }
       const present = new Set(s.queue);
@@ -698,6 +822,8 @@ function persist() {
   const data: Saved = {
     queue: s.queue.slice(0, 500),
     original: s.original?.slice(0, 500) ?? null,
+    queueSources: s.queueSources.slice(0, 500),
+    queueReasons: s.queueReasons.slice(0, 500),
     index: s.index,
     position: s.position,
     volume: s.volume,
