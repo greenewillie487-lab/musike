@@ -14,8 +14,14 @@ export function GenrePanel({ id }: { id: string }) {
   // Genre names come from YouTube Music in the app language, so each language has its own list.
   const genres = useRemote<Genre[]>(`genres:${lang}`, () => api.genres());
   // Real-time covers: each tile mirrors the first artists of its genre page.
-  const [covers, setCovers] = useState<Record<string, string>>({});
+  const [covers, setCovers] = useState<Record<string, string[]>>({});
   const genreData = genres.status === "ok" ? genres.data : null;
+  // One shared ticker drives the rotation (Apple's browse tiles cycle their artwork).
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((x) => x + 1), 5000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     if (!genreData?.length) return;
     let alive = true;
@@ -23,9 +29,12 @@ export function GenrePanel({ id }: { id: string }) {
       api
         .genre(g.id)
         .then((page: GenrePage) => {
-          const thumb = page.artists[0]?.thumb ?? page.artists[0]?.art;
-          if (!alive || !thumb) return;
-          setCovers((c) => (c[g.id] ? c : { ...c, [g.id]: thumb }));
+          const thumbs = page.artists
+            .slice(0, 4)
+            .map((a) => a.thumb ?? a.art)
+            .filter((u): u is string => !!u);
+          if (!alive || !thumbs.length) return;
+          setCovers((c) => (c[g.id]?.length ? c : { ...c, [g.id]: thumbs }));
         })
         .catch(() => {});
     }
@@ -69,9 +78,11 @@ export function GenrePanel({ id }: { id: string }) {
 
       {genres.status === "ok" && (
         <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {genres.data.map((g) => {
+          {genres.data.map((g, gi) => {
             const [c1, c2] = paletteFor(g.name);
-            const cover = covers[g.id];
+            const coversForGenre = covers[g.id];
+            const offset = gi * 2; // tiles don't all flip at the same moment
+            const cover = coversForGenre?.length ? coversForGenre[(tick + offset) % coversForGenre.length] : null;
             return (
               <li key={g.id}>
                 <Link
@@ -80,9 +91,7 @@ export function GenrePanel({ id }: { id: string }) {
                   className="group relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-2xl p-3.5 transition-transform duration-300 ease-out-expo hover:scale-[1.03] active:scale-[0.98]"
                   style={cover ? undefined : { background: `linear-gradient(135deg, ${c1}, ${c2})` }}
                 >
-                  {cover ? (
-                    <Artwork src={cover} className="absolute inset-0 size-full" />
-                  ) : null}
+                  {cover ? <Artwork src={cover} className="absolute inset-0 size-full transition-opacity duration-700" /> : null}
                   <span
                     aria-hidden="true"
                     className="absolute inset-0"
