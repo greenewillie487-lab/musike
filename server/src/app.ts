@@ -78,7 +78,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     return { suggestions: await suggestions(q.trim().slice(0, 100), langOf(req)).catch(() => []) };
   });
 
-  app.get("/api/radio/:id", async (req) => ({ tracks: await radio(videoId(req.params)) }));
+  app.get("/api/radio/:id", async (req) => ({ tracks: await radio(videoId(req.params), (req.query as { artist?: string }).artist) }));
 
   // Browse by genre: genre → its artists or all its songs → an artist's top songs
 

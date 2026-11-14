@@ -229,10 +229,44 @@ function pickClip(candidates: Track[], title: string, artist: string, duration: 
   return best?.track ?? null;
 }
 
-/** YouTube Music "radio" for a track: related songs to continue playback. */
-export async function radio(id: string): Promise<Track[]> {
+/**
+ * YouTube Music "radio" for a track: related songs to continue playback.
+ * Apple's radios stay with the act you picked before wandering the genre, so when the
+ * seed's artist is known, their own catalog is folded into the pool every few slots.
+ */
+export async function radio(id: string, artist?: string): Promise<Track[]> {
   const panel = await withClient((yt) => yt.music.getUpNext(id, true));
-  return (panel.contents ?? [])
+  const related = (panel.contents ?? [])
     .map((i) => toTrack(i, "song"))
     .filter((t): t is Track => !!t && t.id !== id);
+  if (!artist) return related;
+  try {
+    const key = artist.toLowerCase();
+    const own = (await search(artist, "song"))
+      .filter((t) => t.id !== id && (t.artist || "").toLowerCase().includes(key))
+      .slice(0, 8);
+    if (!own.length) return related;
+    const seen = new Set([id]);
+    const take = (pool: Track[]): Track | null => {
+      while (pool.length) {
+        const t = pool.shift()!;
+        if (!seen.has(t.id)) {
+          seen.add(t.id);
+          return t;
+        }
+      }
+      return null;
+    };
+    const mixed: Track[] = [];
+    while ((related.length || own.length) && mixed.length < 40) {
+      // every third slot comes from the seed artist's catalog
+      const preferred = mixed.length % 4 === 0 && own.length ? own : related;
+      const t = take(preferred) ?? take(own) ?? take(related);
+      if (!t) break;
+      mixed.push(t);
+    }
+    return mixed;
+  } catch {
+    return related;
+  }
 }

@@ -227,6 +227,66 @@ export const usePlayer = create<PlayerState>((set, get) => {
     for (const id of ids) api.prepare(id).catch(() => {});
   }
 
+  /** How often each artist shows up in the user's history and favorites — the personal
+   *  half of the radio brain: suggestions that match the listener's taste surface first. */
+  function artistAffinity(): Map<string, number> {
+    const { history, favorites } = useLibrary.getState();
+    const counts = new Map<string, number>();
+    for (const t of [...history, ...favorites]) {
+      const key = (t.artist || "").toLowerCase();
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }
+
+  /** The radio brain — the best of every platform:
+   *  Apple: vibe/scene continuity, never act-locked · Spotify: personal affinity ranking,
+   *  a 70/30 familiar/novelty mix, and no repeats from recent history · YouTube Music:
+   *  seed-weighted pool with artist variety inside a session.
+   *  Pool in (server related + seed-artist catalog) → ranked, balanced, diverse picks out. */
+  function pickSuggestions(pool: Track[], seed: Track, count: number): Track[] {
+    const { history } = useLibrary.getState();
+    const recentIds = new Set(history.slice(0, 30).map((t) => t.id));
+    const taste = artistAffinity();
+    const seedArtist = (seed.artist || "").toLowerCase();
+
+    // Nothing queued or played in the last 30 tracks comes back around (Spotify's Fewer Repeats).
+    const seen = new Set([...get().queue.map((t) => t.id), ...recentIds, seed.id]);
+    const fresh = pool.filter((t) => !seen.has(t.id));
+
+    // Score: personal affinity + seed-act continuity + exploration jitter (BaRT-style).
+    const scored = fresh.map((t) => {
+      const artist = (t.artist || "").toLowerCase();
+      const affinity = taste.get(artist) ?? 0;
+      const familiar = affinity > 0 || artist === seedArtist;
+      return { t, familiar, score: affinity * 2 + (artist === seedArtist ? 1.5 : 0) + Math.random() * 1.3 };
+    });
+    scored.sort((a, b) => b.score - a.score);
+
+    // 70/30 familiar/novelty — discovery stays in the rotation (Spotify's balance).
+    const maxFamiliar = Math.ceil(scored.length * 0.7);
+    const balanced: typeof scored = [];
+    const deferred: typeof scored = [];
+    let familiarCount = 0;
+    for (const s of scored) {
+      if (s.familiar && familiarCount >= maxFamiliar) deferred.push(s);
+      else {
+        balanced.push(s);
+        if (s.familiar) familiarCount++;
+      }
+    }
+
+    // Artist variety: never three in a row by the same act (YouTube Music's session rule).
+    const out: Track[] = [];
+    for (const s of [...balanced, ...deferred].slice(0, count)) {
+      const artist = (s.t.artist || "").toLowerCase();
+      const n = out.length;
+      if (n >= 2 && (out[n - 1]!.artist || "").toLowerCase() === artist && (out[n - 2]!.artist || "").toLowerCase() === artist) continue;
+      out.push(s.t);
+    }
+    return out;
+  }
+
   /** Apple's ∞ brain: as the queue runs low, fetch radio for the track playing right now
    *  (the song the user chose), and park a few suggestions at the end, marked in the queue. */
   let extending = false;
@@ -238,8 +298,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
     if (!seed) return;
     extending = true;
     try {
-      const known = new Set(s.queue.map((t) => t.id));
-      const more = (await api.radio(seed.id)).filter((t) => !known.has(t.id)).slice(0, 5);
+      const pool = await api.radio(seed.id, seed.artist);
+      const more = pickSuggestions(pool, seed, 5);
       if (!more.length) return;
       set((st) => ({
         queue: [...st.queue, ...more],
@@ -265,8 +325,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 1800));
-        const known = new Set(get().queue.map((t) => t.id));
-        const more = (await api.radio(last.id)).filter((t) => !known.has(t.id)).slice(0, 25);
+        const pool = await api.radio(last.id, last.artist);
+        const more = pickSuggestions(pool, last, 25);
         if (!more.length) throw new Error("empty");
         set((st) => ({
           queue: [...st.queue, ...more],
@@ -509,7 +569,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     startRadio: async (track) => {
       toast(getT().player.startingRadio(track.title));
       try {
-        const related = await api.radio(track.id);
+        const related = await api.radio(track.id, track.artist);
         get().playList([track, ...related.filter((t) => t.id !== track.id)], 0);
       } catch (e) {
         toast((e as Error).message, "error");
