@@ -221,6 +221,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
     void extendQueue();
   }
 
+  /** Resolve streams ahead of time so the next track starts instantly. Failures are
+   *  silent on purpose — a cold track still plays, just after an on-demand resolve. */
+  function warm(ids: string[]) {
+    for (const id of ids) api.prepare(id).catch(() => {});
+  }
+
   /** Apple's ∞ brain: as the queue runs low, fetch radio for the track playing right now
    *  (the song the user chose), and park a few suggestions at the end, marked in the queue. */
   let extending = false;
@@ -240,6 +246,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
         original: st.original ? [...st.original, ...more] : null,
         suggestedFrom: st.suggestedFrom ?? st.queue.length,
       }));
+      warm(more.slice(0, 2).map((t) => t.id));
     } catch {
       /* silent: the queue keeps playing; the next track load tries again */
     } finally {
@@ -254,20 +261,26 @@ export const usePlayer = create<PlayerState>((set, get) => {
     const last = s.queue[s.index];
     if (!last) return;
     set({ status: "loading", statusText: "fetchingRadio" });
-    try {
-      const known = new Set(get().queue.map((t) => t.id));
-      const more = (await api.radio(last.id)).filter((t) => !known.has(t.id)).slice(0, 25);
-      if (!more.length) throw new Error("empty");
-      set((st) => ({
-        queue: [...st.queue, ...more],
-        original: st.original ? [...st.original, ...more] : null,
-        suggestedFrom: st.suggestedFrom ?? st.queue.length,
-      }));
-      toast(getT().player.radioContinuing(last.title));
-      load(get().index + 1);
-    } catch {
-      set({ status: "paused", statusText: null, position: 0 });
+    // One failed fetch should never stop the music: try, wait, try again.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 1800));
+        const known = new Set(get().queue.map((t) => t.id));
+        const more = (await api.radio(last.id)).filter((t) => !known.has(t.id)).slice(0, 25);
+        if (!more.length) throw new Error("empty");
+        set((st) => ({
+          queue: [...st.queue, ...more],
+          original: st.original ? [...st.original, ...more] : null,
+          suggestedFrom: st.suggestedFrom ?? st.queue.length,
+        }));
+        warm(more.slice(0, 2).map((t) => t.id));
+        toast(getT().player.radioContinuing(last.title));
+        return load(get().index + 1);
+      } catch {
+        /* fall through to the retry */
+      }
     }
+    set({ status: "paused", statusText: null, position: 0 });
   }
 
   function onStarted() {
@@ -276,11 +289,13 @@ export const usePlayer = create<PlayerState>((set, get) => {
     if (!track || recordedToken === token) return;
     recordedToken = token;
     useLibrary.getState().recordPlay(track);
-    // Warm up the next track (and, in Video mode, find and resolve its clip) so it starts quickly.
-    const upcoming = s.queue[s.index + 1];
-    if (!upcoming) return;
-    if (s.preferVideo) void lookupClip(upcoming).then((id) => api.prepare(id ?? upcoming.id).catch(() => {}));
-    else api.prepare(upcoming.id).catch(() => {});
+    // Warm up the next two tracks (and, in Video mode, find and resolve their clips) so the
+    // queue flows without on-demand resolves mid-listen.
+    for (const upcoming of [s.queue[s.index + 1], s.queue[s.index + 2]]) {
+      if (!upcoming) continue;
+      if (s.preferVideo) void lookupClip(upcoming).then((id) => api.prepare(id ?? upcoming.id).catch(() => {}));
+      else api.prepare(upcoming.id).catch(() => {});
+    }
   }
 
   function onEnded() {
