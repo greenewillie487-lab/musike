@@ -133,16 +133,23 @@ function Line({
     >
       {active && line.words ? (
         <span className="inline">
-          {line.words.map((word, i) => (
-            <motion.span
-              key={i}
-              animate={{ opacity: word.time <= time ? 1 : 0.38 }}
-              transition={{ duration: 0.24, ease: "easeOut" }}
-              className="inline"
-            >
-              {word.text}{" "}
-            </motion.span>
-          ))}
+          {(() => {
+            // The line activates at line.time, but its first word is usually tagged a
+            // touch later — and the smooth clock can trail that beat. Until the first
+            // word's moment arrives, the whole line stays lit instead of starting dark
+            // (which read as the first letters being cut off).
+            const first = line.words[0]?.time ?? 0;
+            return line.words.map((word, i) => (
+              <motion.span
+                key={i}
+                animate={{ opacity: word.time <= time || time < first ? 1 : 0.38 }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+                className="inline"
+              >
+                {word.text}{" "}
+              </motion.span>
+            ));
+          })()}
         </span>
       ) : (
         line.text
