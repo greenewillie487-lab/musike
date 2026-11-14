@@ -176,21 +176,6 @@ export default function Search() {
     if (isMd && !q) input.current?.focus();
   }, []);
 
-  const tab = (k: Kind, label: string) => (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={kind === k}
-      onClick={() => setQuery(text || q, k)}
-      className={cn(
-        "h-9 rounded-full px-4 text-sm font-medium transition-colors duration-200",
-        kind === k ? "bg-fg text-bg" : "bg-surface-3 text-fg-2 hover:text-fg",
-      )}
-    >
-      {label}
-    </button>
-  );
-
   return (
     <div className="pb-8">
       <PageHeader title={t.search.title} />
@@ -275,11 +260,6 @@ export default function Search() {
 
         {!linkId && (
           <div className="flex flex-wrap items-center gap-2">
-            <div role="tablist" aria-label={t.search.resultType} className="flex gap-2">
-              {tab("song", t.search.songs)}
-              {tab("video", t.search.videos)}
-              {tab("album", t.search.albums)}
-            </div>
             <span className="flex-1" />
             <div className="flex items-center gap-1">
               <button

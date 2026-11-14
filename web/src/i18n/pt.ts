@@ -244,7 +244,7 @@ export const pt: Messages = {
   search: {
     title: "Buscar",
     inputLabel: "Buscar músicas, artistas, vídeos ou colar um link do YouTube",
-    placeholder: "Músicas, artistas ou link do YouTube",
+    placeholder: "Artistas, Músicas, Letras e Mais",
     clear: "Limpar busca",
     searchSeparately: (n) => `Buscar ${n} músicas separadamente`,
     resultType: "Tipo de resultado",

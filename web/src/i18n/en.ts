@@ -250,7 +250,7 @@ export const en = {
   search: {
     title: "Search",
     inputLabel: "Search songs, artists, videos or paste a YouTube link",
-    placeholder: "Songs, artists or a YouTube link",
+    placeholder: "Artists, Songs, Lyrics and More",
     clear: "Clear search",
     searchSeparately: (n: number) => `Search ${n} songs separately`,
     resultType: "Result type",
@@ -267,7 +267,7 @@ export const en = {
     clearRecent: "Clear",
     idleTitle: "What's playing today?",
     idleBody:
-      "Search for a song, artist or album. For music videos and live performances, use the Videos tab. You can also paste a YouTube link.",
+      "Search for a song, artist or album. You can also paste a YouTube link.",
     exploreGenres: "Browse by genre",
     albums: "Albums",
   },
