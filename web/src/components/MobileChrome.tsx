@@ -6,6 +6,7 @@ import { NOW_PLAYING_HASH, paths } from "../lib/routes";
 import { selectCurrent, usePlayer, useStatusText } from "../player/player";
 import { Artwork } from "./Artwork";
 import { PlayPauseIcon } from "./Controls";
+import { useNativeGlass } from "../lib/glass-native";
 
 const tabs = [
   { to: paths.home, key: "home", Icon: HouseIcon, end: true },
@@ -48,7 +49,9 @@ export function TabBar() {
 }
 
 export function MiniPlayer() {
+  const nativeGlass = useNativeGlass((s) => s.active);
   const track = usePlayer(selectCurrent);
+  if (nativeGlass) return null; // the native Liquid Glass bar replaces the web mini-player
   const position = usePlayer((s) => s.position);
   const duration = usePlayer((s) => s.duration);
   const status = usePlayer((s) => s.status);

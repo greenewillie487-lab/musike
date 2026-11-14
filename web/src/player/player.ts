@@ -3,6 +3,7 @@ import { getT, useT } from "../i18n";
 import { api, capabilities, explainStreamError, streamSource, systemMedia, type ApiError, type ErrorCode } from "../lib/api";
 import { createAudio } from "../lib/audio";
 import { shuffleSpread } from "../lib/format";
+import { hideNativeGlass, showNativeGlass, syncNativeGlass } from "../lib/glass-native";
 import {
   logEvent,
   loadEvents,
@@ -170,6 +171,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
   }
 
   function load(index: number, opts: { autoplay?: boolean; startAt?: number } = {}) {
+    if (typeof window !== "undefined") {
+      (window as unknown as { __musikeProgress?: () => number }).__musikeProgress = () => {
+        const st = get();
+        return st.duration > 0 ? st.position / st.duration : 0;
+      };
+    }
     const s = get();
     const track = s.queue[index];
     if (!track) return;
@@ -234,6 +241,11 @@ export const usePlayer = create<PlayerState>((set, get) => {
     }
     setMetadata(track);
     void extendQueue();
+    // Native Liquid Glass bar (iOS 26+: real UIGlassEffect) mirrors the queue head.
+    const glassTrack = s.queue[index];
+    if (glassTrack) {
+      void showNativeGlass(glassTrack, s.duration > 0 ? s.position / s.duration : 0, opts.autoplay !== false && s.status !== "paused");
+    }
   }
 
   /** Resolve streams ahead of time so the next track starts instantly. Failures are
@@ -533,6 +545,9 @@ export const usePlayer = create<PlayerState>((set, get) => {
       set({ status: "playing", statusText: null });
       onStarted();
       syncPlaybackState();
+      const st = get();
+      const t = st.queue[st.index];
+      if (t) void syncNativeGlass(t, st.duration > 0 ? st.position / st.duration : 0, true);
     });
     media.addEventListener("pause", () => {
       if (!isActive() || media.ended || get().status === "loading" || get().status === "error") return;
@@ -666,6 +681,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
       else {
         activeMedia()?.pause();
         loaded = null;
+        void hideNativeGlass();
         set({ index: Math.max(0, queue.length - 1), status: queue.length ? "paused" : "idle", position: 0 });
       }
     },
