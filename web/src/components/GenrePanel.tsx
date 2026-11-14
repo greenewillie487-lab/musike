@@ -12,14 +12,26 @@ export function GenrePanel({ id }: { id: string }) {
   // Genre names come from YouTube Music in the app language, so each language has its own list.
   const genres = useRemote<Genre[]>(`genres:${lang}`, () => api.genres());
 
-  return (
-    <div id={id} className="rounded-[16px] bg-surface-2 p-3 ring-1 ring-line">
-      <p className="mb-2.5 px-1 text-xs font-medium text-fg-2">{t.search.exploreGenres}</p>
+  // Deterministic, tasteful color treatments: real genre names from YouTube Music,
+  // bold duotone gradients for tiles without artwork (the browse-grid reference style).
+  const PALETTES = [
+    ["#e11d48", "#f97316"], ["#7c3aed", "#db2777"], ["#0891b2", "#22d3ee"],
+    ["#16a34a", "#84cc16"], ["#d97706", "#facc15"], ["#4f46e5", "#818cf8"],
+    ["#be185d", "#fb7185"], ["#0d9488", "#2dd4bf"], ["#dc2626", "#7c3aed"],
+    ["#ca8a04", "#ea580c"], ["#2563eb", "#38bdf8"], ["#059669", "#10b981"],
+  ];
+  const paletteFor = (name: string) => {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return PALETTES[h % PALETTES.length];
+  };
 
+  return (
+    <div id={id}>
       {genres.status === "loading" && (
-        <div aria-label={t.common.loading} className="flex flex-wrap gap-2">
-          {Array.from({ length: 14 }, (_, i) => (
-            <span key={i} className="skeleton h-9 rounded-full" style={{ width: `${64 + ((i * 23) % 56)}px` }} />
+        <div aria-label={t.common.loading} className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {Array.from({ length: 12 }, (_, i) => (
+            <span key={i} className="skeleton aspect-[4/3] rounded-2xl" />
           ))}
         </div>
       )}
@@ -34,18 +46,27 @@ export function GenrePanel({ id }: { id: string }) {
       )}
 
       {genres.status === "ok" && (
-        <ul className="flex flex-wrap gap-2">
-          {genres.data.map((g) => (
-            <li key={g.id}>
-              <Link
-                to={paths.genre(g.id)}
-                state={{ name: g.name }}
-                className="block h-9 rounded-full bg-surface-3 px-4 text-sm leading-9 transition-colors hover:bg-surface-4"
-              >
-                {g.name}
-              </Link>
-            </li>
-          ))}
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {genres.data.map((g) => {
+            const [c1, c2] = paletteFor(g.name);
+            return (
+              <li key={g.id}>
+                <Link
+                  to={paths.genre(g.id)}
+                  state={{ name: g.name }}
+                  className="group relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-2xl p-3.5 transition-transform duration-300 ease-out-expo hover:scale-[1.03] active:scale-[0.98]"
+                  style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(to top, rgb(0 0 0 / 0.35), transparent 55%)" }}
+                  />
+                  <span className="relative text-[17px] leading-tight font-bold tracking-tight text-white">{g.name}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

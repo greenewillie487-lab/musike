@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, CaretRightIcon, GearSixIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, CaretRightIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { useT } from "../i18n";
@@ -6,7 +6,6 @@ import { cn } from "../lib/format";
 import { needsAttention, useSystem } from "../stores/system";
 import { useUi } from "../stores/ui";
 import { AppIconMark } from "./Brand";
-import { IconButton } from "./IconButton";
 
 /** Sticky page header. On phones it carries the brand mark and the settings entry, since there is no rail. */
 export function PageHeader({
@@ -38,14 +37,17 @@ export function PageHeader({
         {title && <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight md:text-xl">{title}</h1>}
         {!title && <span className="flex-1" />}
         {actions}
-        <IconButton
-          label={attention ? t.nav.settingsUpdate : t.nav.settings}
+        {/* Profile avatar (browse references): opens Settings — the app has no accounts,
+            so the Musike mark stands in for a profile photo. Replaces the gear on phones. */}
+        <button
+          type="button"
           onClick={() => setSettingsOpen(true)}
-          className="-mr-2 md:hidden"
+          aria-label={attention ? t.nav.settingsUpdate : t.nav.settings}
+          className="relative shrink-0"
         >
-          <GearSixIcon size={22} />
-          {attention && <span className="absolute top-2 right-2 size-2 rounded-full bg-accent ring-2 ring-bg" />}
-        </IconButton>
+          <AppIconMark className="size-9 rounded-full ring-2 ring-line transition-transform active:scale-95" />
+          {attention && <span className="absolute top-0 right-0 size-2.5 rounded-full bg-accent ring-2 ring-bg" />}
+        </button>
       </div>
     </header>
   );

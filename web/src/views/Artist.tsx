@@ -1,6 +1,8 @@
-import { MusicNotesIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { MusicNotesIcon, PauseIcon, PlayIcon, ShuffleIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useLocation, useParams } from "react-router";
+import { usePlayer } from "../player/player";
+import { shuffleSpread } from "../lib/format";
 import { AlbumRow } from "../components/AlbumTiles";
 import { Artwork } from "../components/Artwork";
 import { BackButton, EmptyState, PageHeader } from "../components/Page";
@@ -11,7 +13,38 @@ import { useI18n, useT } from "../i18n";
 import { api } from "../lib/api";
 import { paths } from "../lib/routes";
 import { cn } from "../lib/format";
-import type { ArtistPage } from "../lib/types";
+import type { ArtistPage, Track } from "../lib/types";
+
+/** The hero action row: big play circle + glass shuffle, like the artist-page references. */
+function ArtistActions({ tracks, name }: { tracks: Track[]; name: string }) {
+  const t = useT();
+  const status = usePlayer((s) => s.status);
+  const current = usePlayer((s) => s.queue[s.index]);
+  const isThisPlaying = status === "playing" && !!current && tracks.some((t) => t.id === current.id);
+  const playList = usePlayer((s) => s.playList);
+  const toggle = usePlayer((s) => s.toggle);
+
+  return (
+    <div className="flex items-center gap-3 px-4 pt-4 md:px-6">
+      <button
+        type="button"
+        aria-label={isThisPlaying ? t.common.pause : t.common.playX(name)}
+        onClick={() => (isThisPlaying ? toggle() : playList(tracks, 0))}
+        className="grid size-14 shrink-0 place-items-center rounded-full bg-fg text-bg transition-transform duration-200 ease-out-expo hover:scale-105 active:scale-95"
+      >
+        {isThisPlaying ? <PauseIcon size={26} weight="fill" /> : <PlayIcon size={26} weight="fill" />}
+      </button>
+      <button
+        type="button"
+        aria-label={t.collection.shuffle}
+        onClick={() => playList(shuffleSpread(tracks), 0)}
+        className="glass-thin grid size-14 shrink-0 place-items-center rounded-full text-fg transition-transform duration-200 ease-out-expo hover:scale-105 active:scale-95"
+      >
+        <ShuffleIcon size={22} />
+      </button>
+    </div>
+  );
+}
 
 /** An artist's greatest hits, ready to pick from. */
 export default function Artist() {
@@ -41,6 +74,8 @@ export default function Artist() {
           <h1 className="text-[28px] leading-[1.1] font-bold tracking-tight break-words text-white md:text-5xl">{name}</h1>
         </div>
       </div>
+
+      {page.status === "ok" && page.data.tracks.length > 0 && <ArtistActions tracks={page.data.tracks} name={name} />}
 
       {page.status === "ok" && page.data.description && (
         <button
