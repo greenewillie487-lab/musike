@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { getT, useT } from "../i18n";
 import { api, capabilities, explainStreamError, streamSource, systemMedia, type ApiError, type ErrorCode } from "../lib/api";
 import { createAudio } from "../lib/audio";
-import { shuffled } from "../lib/format";
+import { shuffleSpread } from "../lib/format";
 import type { Track } from "../lib/types";
 import { useLibrary } from "../stores/library";
 import { openSettings } from "../stores/system";
@@ -39,6 +39,8 @@ interface PlayerState {
   preferVideo: boolean;
   quality: Quality;
   autoRadio: boolean;
+  /** Queue index where the autoplay suggestions start; null = none queued. */
+  suggestedFrom: number | null;
 
   playList: (tracks: Track[], start?: number) => void;
   playTrack: (track: Track) => void;
@@ -216,10 +218,39 @@ export const usePlayer = create<PlayerState>((set, get) => {
       );
     }
     setMetadata(track);
+    void extendQueue();
+  }
+
+  /** Apple's ∞ brain: as the queue runs low, fetch radio for the track playing right now
+   *  (the song the user chose), and park a few suggestions at the end, marked in the queue. */
+  let extending = false;
+  async function extendQueue() {
+    const s = get();
+    if (!s.autoRadio || extending) return;
+    if (s.queue.length - s.index > 2) return;
+    const seed = s.queue[s.index];
+    if (!seed) return;
+    extending = true;
+    try {
+      const known = new Set(s.queue.map((t) => t.id));
+      const more = (await api.radio(seed.id)).filter((t) => !known.has(t.id)).slice(0, 5);
+      if (!more.length) return;
+      set((st) => ({
+        queue: [...st.queue, ...more],
+        original: st.original ? [...st.original, ...more] : null,
+        suggestedFrom: st.suggestedFrom ?? st.queue.length,
+      }));
+    } catch {
+      /* silent: the queue keeps playing; the next track load tries again */
+    } finally {
+      extending = false;
+    }
   }
 
   async function continueWithRadio() {
     const s = get();
+    // Suggestions were pre-queued ahead of time — just play into them.
+    if (s.suggestedFrom !== null && s.index < s.queue.length - 1) return load(s.index + 1);
     const last = s.queue[s.index];
     if (!last) return;
     set({ status: "loading", statusText: "fetchingRadio" });
@@ -230,6 +261,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
       set((st) => ({
         queue: [...st.queue, ...more],
         original: st.original ? [...st.original, ...more] : null,
+        suggestedFrom: st.suggestedFrom ?? st.queue.length,
       }));
       toast(getT().player.radioContinuing(last.title));
       load(get().index + 1);
@@ -383,16 +415,17 @@ export const usePlayer = create<PlayerState>((set, get) => {
     preferVideo: capabilities.video && (saved.preferVideo ?? false),
     quality: saved.quality ?? "sd",
     autoRadio: saved.autoRadio ?? true,
+    suggestedFrom: null,
 
     playList: (tracks, start = 0) => {
       if (!tracks.length) return;
       const first = tracks[start] ?? tracks[0];
       if (get().shuffle) {
         const rest = tracks.filter((_, i) => i !== start);
-        set({ queue: [first, ...shuffled(rest)], original: tracks.slice() });
+        set({ queue: [first, ...shuffleSpread(rest)], original: tracks.slice(), suggestedFrom: null });
         load(0);
       } else {
-        set({ queue: tracks.slice(), original: null });
+        set({ queue: tracks.slice(), original: null, suggestedFrom: null });
         load(start);
       }
     },
@@ -400,12 +433,16 @@ export const usePlayer = create<PlayerState>((set, get) => {
     playTrack: (track) => {
       const s = get();
       const at = s.queue.findIndex((t) => t.id === track.id);
-      if (at >= 0) return load(at);
+      if (at >= 0) {
+        set({ suggestedFrom: null });
+        return load(at);
+      }
       if (!s.queue.length) return get().playList([track]);
       const insert = s.index + 1;
       set({
         queue: [...s.queue.slice(0, insert), track, ...s.queue.slice(insert)],
         original: s.original ? [...s.original, track] : null,
+        suggestedFrom: null,
       });
       load(insert);
     },
@@ -434,10 +471,10 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const removed = s.queue[i];
       const queue = s.queue.filter((_, j) => j !== i);
       const original = s.original?.filter((t) => t !== removed) ?? null;
-      if (i < s.index) return set({ queue, original, index: s.index - 1 });
-      if (i > s.index) return set({ queue, original });
+      if (i < s.index) return set({ queue, original, index: s.index - 1, suggestedFrom: null });
+      if (i > s.index) return set({ queue, original, suggestedFrom: null });
       // Removing the current track: move on to whatever takes its place.
-      set({ queue, original });
+      set({ queue, original, suggestedFrom: null });
       if (queue[i]) load(i, { autoplay: s.status === "playing" });
       else {
         activeMedia()?.pause();
@@ -451,7 +488,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     clearUpcoming: () => {
       const s = get();
       const keep = s.queue.slice(0, s.index + 1);
-      set({ queue: keep, original: s.original ? keep.slice() : null });
+      set({ queue: keep, original: s.original ? keep.slice() : null, suggestedFrom: null });
     },
 
     startRadio: async (track) => {
@@ -526,14 +563,14 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const current = s.queue[s.index];
       if (!s.shuffle) {
         const rest = s.queue.filter((_, i) => i !== s.index);
-        set({ shuffle: true, original: s.queue, queue: current ? [current, ...shuffled(rest)] : shuffled(rest), index: 0 });
+        set({ shuffle: true, original: s.queue, queue: current ? [current, ...shuffleSpread(rest)] : shuffleSpread(rest), index: 0, suggestedFrom: null });
         return;
       }
       const present = new Set(s.queue);
       const base = (s.original ?? s.queue).filter((t) => present.has(t));
       const extra = s.queue.filter((t) => !base.includes(t));
       const queue = [...base, ...extra];
-      set({ shuffle: false, original: null, queue, index: Math.max(0, current ? queue.indexOf(current) : 0) });
+      set({ shuffle: false, original: null, queue, index: Math.max(0, current ? queue.indexOf(current) : 0), suggestedFrom: null });
     },
 
     cycleRepeat: () => {

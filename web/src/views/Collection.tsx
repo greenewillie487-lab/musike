@@ -116,7 +116,7 @@ export default function Collection({ kind }: Props) {
 
       <div className="px-2 md:px-3">
         {tracks.length > 0 ? (
-          <TrackList tracks={tracks} playlistId={playlist?.id} showAlbum />
+          <TrackList tracks={tracks} playlistId={playlist?.id} showAlbum queueAll={kind !== "history"} />
         ) : (
           <EmptyState
             icon={<MagnifyingGlassIcon size={28} />}

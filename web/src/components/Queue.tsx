@@ -1,4 +1,4 @@
-import { QueueIcon, RepeatIcon, RepeatOnceIcon, ShuffleIcon, XIcon } from "@phosphor-icons/react";
+import { InfinityIcon, QueueIcon, RepeatIcon, RepeatOnceIcon, ShuffleIcon, XIcon } from "@phosphor-icons/react";
 import { useT } from "../i18n";
 import { cn, formatTime } from "../lib/format";
 import { usePlayer } from "../player/player";
@@ -10,6 +10,7 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const queue = usePlayer((s) => s.queue);
   const index = usePlayer((s) => s.index);
+  const suggestedFrom = usePlayer((s) => s.suggestedFrom);
   const live = usePlayer((s) => s.status === "playing" || s.status === "loading");
   const jumpTo = usePlayer((s) => s.jumpTo);
   const removeAt = usePlayer((s) => s.removeAt);
@@ -24,6 +25,10 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
 
   const current = queue[index];
   const upcoming = queue.slice(index + 1);
+  // Autoplay suggestions (the ∞ brain) split off into their own marked section.
+  const boundary = suggestedFrom !== null && suggestedFrom > index + 1 ? suggestedFrom - index - 1 : suggestedFrom !== null ? 0 : upcoming.length;
+  const upNext = upcoming.slice(0, boundary);
+  const suggested = suggestedFrom !== null ? upcoming.slice(boundary) : [];
 
   if (!current) {
     return (
@@ -79,7 +84,7 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
       <section>
         <div className="flex items-center justify-between px-2 pb-1.5">
           <h3 className="text-xs font-medium text-fg-3">
-            {t.queue.upNext} <span className="font-mono">{upcoming.length}</span>
+            {t.queue.upNext} <span className="font-mono">{upNext.length}</span>
           </h3>
           <div className="flex items-center gap-0.5">
             <IconButton
@@ -107,9 +112,16 @@ export function QueueList({ compact = false }: { compact?: boolean }) {
             )}
           </div>
         </div>
-        {upcoming.length ? (
-          <ul>{upcoming.map((_, k) => row(index + 1 + k, false))}</ul>
-        ) : (
+        {upNext.length ? <ul>{upNext.map((_, k) => row(index + 1 + k, false))}</ul> : null}
+        {suggested.length > 0 && (
+          <div className="pt-3">
+            <h3 className="flex items-center gap-1.5 px-2 pb-1.5 text-xs font-medium text-fg-3">
+              <InfinityIcon size={14} /> {t.queue.suggested}
+            </h3>
+            <ul>{suggested.map((_, k) => row((suggestedFrom ?? index + 1) + k, false))}</ul>
+          </div>
+        )}
+        {!upNext.length && !suggested.length && (
           <p className="px-2 text-sm text-fg-2">
             {t.queue.nothingQueued} {autoRadio ? t.queue.radioContinues : ""}
           </p>

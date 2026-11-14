@@ -31,7 +31,7 @@ function RecentCard({ track, onPlay }: { track: Track; onPlay: () => void }) {
 
 export default function Home() {
   const { favorites, playlists, history, status } = useLibrary();
-  const playList = usePlayer((s) => s.playList);
+  const playTrack = usePlayer((s) => s.playTrack);
   const navigate = useNavigate();
   const t = useT();
   const show = useAppearance();
@@ -77,8 +77,8 @@ export default function Home() {
               }
             >
               <div className="no-scrollbar flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 md:scroll-px-6 md:px-6">
-                {history.slice(0, 16).map((t, i) => (
-                  <RecentCard key={t.id} track={t} onPlay={() => playList(history, i)} />
+                {history.slice(0, 16).map((t) => (
+                  <RecentCard key={t.id} track={t} onPlay={() => playTrack(t)} />
                 ))}
               </div>
             </Section>

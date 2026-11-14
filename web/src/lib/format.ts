@@ -19,3 +19,23 @@ export function shuffled<T>(items: T[]): T[] {
   }
   return a;
 }
+
+/**
+ * Fisher–Yates, then Apple's trick: re-roll so tracks by the same artist (or album)
+ * don't sit back-to-back. True randomness clusters, and clusters "feel" wrong.
+ */
+export function shuffleSpread<T extends { artist?: string; album?: string }>(items: T[]): T[] {
+  const a = shuffled(items);
+  const sameFamily = (x: T, y: T) =>
+    (!!x.artist && x.artist === y.artist) || (!!x.album && !!y.album && x.album === y.album);
+  for (let i = 1; i < a.length; i++) {
+    if (!sameFamily(a[i - 1]!, a[i]!)) continue;
+    for (let j = i + 1; j < a.length; j++) {
+      if (!sameFamily(a[i - 1]!, a[j]!) && (j + 1 >= a.length || !sameFamily(a[j]!, a[j + 1]!))) {
+        [a[i], a[j]] = [a[j], a[i]];
+        break;
+      }
+    }
+  }
+  return a;
+}
