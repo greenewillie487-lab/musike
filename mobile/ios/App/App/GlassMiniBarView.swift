@@ -137,11 +137,9 @@ final class GlassMiniBarView: UIView {
     }
 
     func setProgress(_ progress: Float) {
-        guard let progressLeading else { return }
-        progressLeading.isActive = false
-        progressLeading = progressView.leadingAnchor.constraint(equalTo: leadingAnchor)
-        progressLeading.constant = frame.width * max(0, min(1, progress))
-        progressLeading.isActive = true
+        // Recompute the hairline width directly — no constraint juggling, no Float/CGFloat trap.
+        let clamped = CGFloat(max(0, min(1, progress)))
+        progressView.frame = CGRect(x: 0, y: 0, width: bounds.width * clamped, height: 2)
     }
 
     func setDuration(_ duration: Float) {
