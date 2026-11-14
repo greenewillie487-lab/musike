@@ -227,14 +227,24 @@ export const usePlayer = create<PlayerState>((set, get) => {
     for (const id of ids) api.prepare(id).catch(() => {});
   }
 
+  /** Multi-artist credits ("Masicka, Dunw3ll") group under the primary act — otherwise
+   *  cluster rules and affinity leak every time a feature lands on a track. */
+  const primaryArtist = (t: Track) => (t.artist || "").split(",")[0].trim().toLowerCase();
+
   /** How often each artist shows up in the user's history and favorites — the personal
    *  half of the radio brain: suggestions that match the listener's taste surface first. */
   function artistAffinity(): Map<string, number> {
     const { history, favorites } = useLibrary.getState();
     const counts = new Map<string, number>();
-    for (const t of [...history, ...favorites]) {
-      const key = (t.artist || "").toLowerCase();
-      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    // Recency-weighted: history[0] is the freshest play — Apple's suggestions are
+    // dominated by what you listened to in the last few days, not all-time counts.
+    history.forEach((t, i) => {
+      const key = primaryArtist(t);
+      if (key) counts.set(key, (counts.get(key) ?? 0) + Math.max(1, 8 - Math.floor(i / 5)));
+    });
+    for (const t of favorites) {
+      const key = primaryArtist(t);
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 2);
     }
     return counts;
   }
@@ -256,10 +266,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     // Score: personal affinity + seed-act continuity + exploration jitter (BaRT-style).
     const scored = fresh.map((t) => {
-      const artist = (t.artist || "").toLowerCase();
+      const artist = primaryArtist(t);
       const affinity = taste.get(artist) ?? 0;
       const familiar = affinity > 0 || artist === seedArtist;
-      return { t, familiar, score: affinity * 2 + (artist === seedArtist ? 1.5 : 0) + Math.random() * 1.3 };
+      // Seed neighborhood first: the chosen song's album and act lead the suggestions.
+      const albumMatch = !!t.album && !!seed.album && t.album === seed.album ? 1.5 : 0;
+      return { t, artistKey: artist, familiar, score: affinity * 2 + (artist === seedArtist ? 1.5 : 0) + albumMatch + Math.random() * 1.3 };
     });
     scored.sort((a, b) => b.score - a.score);
 
@@ -277,14 +289,13 @@ export const usePlayer = create<PlayerState>((set, get) => {
     }
 
     // Artist variety: never three in a row by the same act (YouTube Music's session rule).
-    const out: Track[] = [];
+    const out: { t: Track; artistKey: string }[] = [];
     for (const s of [...balanced, ...deferred].slice(0, count)) {
-      const artist = (s.t.artist || "").toLowerCase();
       const n = out.length;
-      if (n >= 2 && (out[n - 1]!.artist || "").toLowerCase() === artist && (out[n - 2]!.artist || "").toLowerCase() === artist) continue;
-      out.push(s.t);
+      if (n >= 2 && out[n - 1]!.artistKey === s.artistKey && out[n - 2]!.artistKey === s.artistKey) continue;
+      out.push({ t: s.t, artistKey: s.artistKey });
     }
-    return out;
+    return out.map((o) => o.t);
   }
 
   /** Apple's ∞ brain: as the queue runs low, fetch radio for the track playing right now
@@ -299,7 +310,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
     extending = true;
     try {
       const pool = await api.radio(seed.id, seed.artist);
-      const more = pickSuggestions(pool, seed, 5);
+      let more = pickSuggestions(pool, seed, 5);
+      // Radio pool thin? Apple falls back to your own listening history — recency-weighted.
+      if (!more.length) {
+        const { history: listenHistory } = useLibrary.getState();
+        more = pickSuggestions(listenHistory.slice(1, 26).filter((t) => t.id !== seed.id), seed, 5);
+      }
       if (!more.length) return;
       set((st) => ({
         queue: [...st.queue, ...more],
@@ -322,11 +338,14 @@ export const usePlayer = create<PlayerState>((set, get) => {
     if (!last) return;
     set({ status: "loading", statusText: "fetchingRadio" });
     // One failed fetch should never stop the music: try, wait, try again.
-    for (let attempt = 0; attempt < 2; attempt++) {
+    const { history: listenHistory } = useLibrary.getState();
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 1800));
-        const pool = await api.radio(last.id, last.artist);
-        const more = pickSuggestions(pool, last, 25);
+        const pool = await api.radio(last.id, last.artist).catch(() => [] as Track[]);
+        let candidates = pickSuggestions(pool, last, 25);
+        if (!candidates.length) candidates = pickSuggestions(listenHistory.slice(1, 40).filter((t) => t.id !== last.id), last, 25);
+        const more = candidates.slice(0, 25); // pickSuggestions already excluded queued + recent plays
         if (!more.length) throw new Error("empty");
         set((st) => ({
           queue: [...st.queue, ...more],
@@ -508,18 +527,15 @@ export const usePlayer = create<PlayerState>((set, get) => {
     playTrack: (track) => {
       const s = get();
       const at = s.queue.findIndex((t) => t.id === track.id);
+      // Tapping a track that is already queued plays it in place — the queue stands.
       if (at >= 0) {
         set({ suggestedFrom: null });
         return load(at);
       }
-      if (!s.queue.length) return get().playList([track]);
-      const insert = s.index + 1;
-      set({
-        queue: [...s.queue.slice(0, insert), track, ...s.queue.slice(insert)],
-        original: s.original ? [...s.original, track] : null,
-        suggestedFrom: null,
-      });
-      load(insert);
+      // A fresh choice owns the queue: the old upcoming tail dies and the radio
+      // re-seeds from this song — Apple/YT Music behavior. One flow, no stale mix.
+      set({ queue: [track], original: null, suggestedFrom: null, index: 0 });
+      load(0);
     },
 
     playNext: (track) => {
