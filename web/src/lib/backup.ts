@@ -17,7 +17,7 @@ export interface Backup {
   app: string;
   library: Library;
   settings?: {
-    theme?: "dark" | "light";
+    theme?: import("./theme").ThemeMode;
     lang?: string;
     appearance?: Partial<Appearance>;
     preferVideo?: boolean;
@@ -84,7 +84,7 @@ export async function restoreBackup(backup: Backup, mode: "merge" | "replace", a
   const s = backup.settings;
   if (applySettings && s) {
     const player = usePlayer.getState();
-    if (s.theme === "dark" || s.theme === "light") useUi.getState().setTheme(s.theme);
+    if (s.theme === "dark" || s.theme === "light" || s.theme === "system") useUi.getState().setTheme(s.theme);
     if (isLang(s.lang)) useI18n.getState().setLang(s.lang);
     if (s.appearance && typeof s.appearance === "object") useAppearance.getState().set(cleanAppearance(s.appearance));
     if (typeof s.autoRadio === "boolean") player.setAutoRadio(s.autoRadio);

@@ -20,6 +20,7 @@
 		AA0000000000000000000003 /* MusikeWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000004 /* MusikeWebViewController.swift */; };
 		AA0000000000000000000006 /* MusikeYouTube.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000005 /* MusikeYouTube.swift */; };
 		AA0000000000000000000008 /* MusikeAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000007 /* MusikeAudio.swift */; };
+		AA000000000000000000000A /* MusikeAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000009 /* MusikeAppearance.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 		AA0000000000000000000004 /* MusikeWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusikeWebViewController.swift; sourceTree = "<group>"; };
 		AA0000000000000000000005 /* MusikeYouTube.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusikeYouTube.swift; sourceTree = "<group>"; };
 		AA0000000000000000000007 /* MusikeAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusikeAudio.swift; sourceTree = "<group>"; };
+		AA0000000000000000000009 /* MusikeAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusikeAppearance.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -77,6 +79,7 @@
 				AA0000000000000000000004 /* MusikeWebViewController.swift */,
 				AA0000000000000000000005 /* MusikeYouTube.swift */,
 				AA0000000000000000000007 /* MusikeAudio.swift */,
+				AA0000000000000000000009 /* MusikeAppearance.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -176,6 +179,7 @@
 				AA0000000000000000000003 /* MusikeWebViewController.swift in Sources */,
 				AA0000000000000000000006 /* MusikeYouTube.swift in Sources */,
 				AA0000000000000000000008 /* MusikeAudio.swift in Sources */,
+				AA000000000000000000000A /* MusikeAppearance.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -22,7 +22,9 @@ export interface TrackMenuState {
   playlistId?: string;
 }
 
-type Theme = "dark" | "light";
+import { applyThemeMode, readThemeMode, type ThemeMode } from "../lib/theme";
+
+type Theme = ThemeMode;
 export type PanelTab = "playing" | "lyrics" | "queue";
 
 interface UiState {
@@ -39,7 +41,6 @@ interface UiState {
   /** Cinema view: the video maximized over everything. */
   theater: boolean;
   setTheme: (t: Theme) => void;
-  toggleTheme: () => void;
   openPanel: (tab: PanelTab) => void;
   togglePanel: (tab: PanelTab) => void;
   /** Settings switch for the docked Now Playing panel on wide screens. */
@@ -55,7 +56,7 @@ interface UiState {
   setTheater: (open: boolean) => void;
 }
 
-const readTheme = (): Theme => (document.documentElement.dataset.theme === "light" ? "light" : "dark");
+const readTheme = (): Theme => readThemeMode();
 const readPanel = (): boolean => {
   try {
     return localStorage.getItem("musike:panel") !== "closed";
@@ -79,17 +80,14 @@ export const useUi = create<UiState>((set, get) => ({
   theater: false,
 
   setTheme: (theme) => {
-    document.documentElement.dataset.theme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#000000" : "#F2F2F7");
-    desktop?.setTheme(theme);
-    try {
-      localStorage.setItem("musike:theme", theme);
-    } catch {
-      /* private mode */
-    }
+    applyThemeMode(theme);
+    // The desktop shell only understands light/dark — hand it the resolved theme.
+    const resolved = theme === "system"
+      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : theme;
+    desktop?.setTheme(resolved);
     set({ theme });
   },
-  toggleTheme: () => get().setTheme(get().theme === "dark" ? "light" : "dark"),
 
   openPanel: (panelTab) => {
     if (window.matchMedia("(min-width: 1280px)").matches) set({ panelOpen: true, panelTab });

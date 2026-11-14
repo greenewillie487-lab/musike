@@ -18,7 +18,8 @@ const config: CapacitorConfig = {
     // The status bar area is padded by the app itself, like on Android.
     contentInset: "never",
     scrollEnabled: true,
-    backgroundColor: "#0B0C0F",
+    // Launch flash only — MusikeAppearance.swift takes over and follows the system.
+    backgroundColor: "#000000",
   },
   ...(serverUrl ? { server: { url: serverUrl, cleartext: false } } : {}),
   plugins: {
@@ -29,9 +30,9 @@ const config: CapacitorConfig = {
     },
     SystemBars: {
       // The app already pads itself with env(safe-area-inset-*), like on an iPhone.
+      // (No forced style: the status bar follows the system appearance — MusikeAppearance.swift.)
       insetsHandling: "native",
       initialViewportFitValueHint: "cover",
-      style: "DARK",
     },
   },
 };

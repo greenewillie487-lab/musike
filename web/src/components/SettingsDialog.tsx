@@ -6,7 +6,7 @@ import {
   SunIcon,
   TranslateIcon,
   WarningCircleIcon,
-} from "@phosphor-icons/react";
+ MonitorIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { LANGUAGES, useI18n, useT, type Lang } from "../i18n";
 import { capabilities, type Channel } from "../lib/api";
@@ -133,6 +133,7 @@ export function SettingsDialog() {
             value={theme}
             onChange={setTheme}
             options={[
+              ["system", <><MonitorIcon size={15} /> {t.settings.system}</>],
               ["dark", <><MoonIcon size={15} /> {t.settings.dark}</>],
               ["light", <><SunIcon size={15} /> {t.settings.light}</>],
             ]}

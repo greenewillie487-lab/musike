@@ -345,6 +345,7 @@ export const en = {
     theme: "Theme",
     dark: "Dark",
     light: "Light",
+    system: "System",
     language: "Language",
     engine: "YouTube engine",
     checking: "checking",

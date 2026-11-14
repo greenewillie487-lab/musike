@@ -339,6 +339,7 @@ export const pt: Messages = {
     theme: "Tema",
     dark: "Escuro",
     light: "Claro",
+    system: "Sistema",
     language: "Idioma",
     engine: "Motor do YouTube",
     checking: "verificando",

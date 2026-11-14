@@ -14,7 +14,22 @@
     <script>
       try {
         var t = localStorage.getItem("musike:theme");
-        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        // "system" (the default) resolves against the iPhone's appearance before first paint,
+        // and a media-query listener keeps it live — no restart, no wrong-theme flash.
+        if (t === "light" || t === "dark") {
+          document.documentElement.dataset.theme = t;
+        } else {
+          document.documentElement.dataset.theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          var themeMq = window.matchMedia("(prefers-color-scheme: dark)");
+          var themeListener = function (e) {
+            if ((localStorage.getItem("musike:theme") || "system") !== "system") return;
+            document.documentElement.dataset.theme = e.matches ? "dark" : "light";
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", e.matches ? "#000000" : "#F2F2F7");
+          };
+          if (themeMq.addEventListener) themeMq.addEventListener("change", themeListener);
+          else if (themeMq.addListener) themeMq.addListener(themeListener);
+        }
         // Before the app loads, so screen readers and the browser see the chosen language right away.
         var l = localStorage.getItem("musike:lang");
         if (l === "en" || l === "pt-BR") document.documentElement.lang = l;
