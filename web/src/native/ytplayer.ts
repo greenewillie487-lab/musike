@@ -41,11 +41,12 @@ export function resolveNatively(videoId: string, lang: string, region: string): 
       return;
     }
     const req = ++sequence;
-    // A track is downloaded before the player gets it, which on a slow connection can take a while.
+    // The native cascade (three YouTube clients) usually answers in seconds or fails fast; a hung
+    // one must not hold the queue — the in-app fallback takes over at this ceiling.
     const timer = setTimeout(() => {
       pending.delete(req);
       reject(new Error("YouTube took too long to answer."));
-    }, 120_000);
+    }, 30_000);
     pending.set(req, (result) => {
       clearTimeout(timer);
       // The web view's media element can't read a file URL (the scheme handler only serves fetch/img), so the

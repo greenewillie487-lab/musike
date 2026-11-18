@@ -44,23 +44,29 @@ void fetchRemoteClients(REMOTE_KEY).then((remote) => {
   }
 });
 
-/** iOS: the native resolver, or null to fall back to the in-app clients. */
+/** iOS: the native resolver, or null to fall back to the in-app clients. One quiet retry first —
+ *  the native cascade occasionally stalls on a cold visitor id, and a second ask goes through. */
 async function resolveOnIos(id: string): Promise<DirectAudio | null> {
   if (!nativeResolverAvailable()) return null;
-  try {
-    const r = await resolveNatively(id, getLang() === "pt-BR" ? "pt-BR" : "en", config.location);
-    if (r.error || !r.url) return null;
-    const expire = Number(new URL(r.url).searchParams.get("expire")) * 1000;
-    return {
-      url: r.url,
-      mime: r.mime || "audio/mp4",
-      title: r.title,
-      duration: r.duration,
-      expiresAt: expire || Date.now() + 3 * 3600_000,
-    };
-  } catch {
-    return null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 800));
+    try {
+      const r = await resolveNatively(id, getLang() === "pt-BR" ? "pt-BR" : "en", config.location);
+      if (!r.error && r.url) {
+        const expire = Number(new URL(r.url).searchParams.get("expire")) * 1000;
+        return {
+          url: r.url,
+          mime: r.mime || "audio/mp4",
+          title: r.title,
+          duration: r.duration,
+          expiresAt: expire || Date.now() + 3 * 3600_000,
+        };
+      }
+    } catch {
+      /* this attempt failed: retry once, then fall back to the in-app clients */
+    }
   }
+  return null;
 }
 
 async function resolve(id: string): Promise<DirectAudio> {

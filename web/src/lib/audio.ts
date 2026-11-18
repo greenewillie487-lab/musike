@@ -139,6 +139,18 @@ class NativeAudio extends EventTarget {
     if (this._src) this.bridge.postMessage({ cmd: "load", url: this._src });
   }
 
+  /** Hands the native player the NEXT track's URL early (iOS): it builds and primes a second player for
+   *  it, so when this song ends the next one starts from an already-buffered pipeline — no dead air. */
+  preloadNext(url: string) {
+    if (url && url !== this._src) this.bridge.postMessage({ cmd: "preload", url });
+  }
+
+  /** Tells the native player how long the track really is (YouTube Music metadata): some streams carry
+   *  silence past the song, and without this the song wouldn't "end" until minutes after the music. */
+  rememberDuration(seconds: number) {
+    if (seconds > 0) this.bridge.postMessage({ cmd: "duration", value: seconds });
+  }
+
   play() {
     this._paused = false;
     this.bridge.postMessage({ cmd: "play" });

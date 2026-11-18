@@ -180,6 +180,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     const s = get();
     const track = s.queue[index];
     if (!track) return;
+    if (track.id !== stallRetriedFor) stallRetriedFor = null;
 
     // Video mode on a song: find its music video first, then load whichever fits.
     if (needsClipLookup(track, s.preferVideo)) {
@@ -227,6 +228,9 @@ export const usePlayer = create<PlayerState>((set, get) => {
     media.muted = s.muted;
     const start = (src: string) => {
       media.src = src;
+      // The real song length from YouTube Music: some streams carry silence past the song, and
+      // without this hint the native player wouldn't "end" until minutes after the music stops.
+      (media as unknown as { rememberDuration?: (d: number) => void }).rememberDuration?.(track.duration || 0);
       if (autoplay) play(media);
     };
     // The server's proxy URL is known right away; on Android the stream is first resolved on the phone.
@@ -241,6 +245,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     }
     setMetadata(track);
     void extendQueue();
+    armStallWatch();
     // Native Liquid Glass bar (iOS 26+: real UIGlassEffect) mirrors the queue head.
     const glassTrack = s.queue[index];
     if (glassTrack) {
@@ -248,10 +253,62 @@ export const usePlayer = create<PlayerState>((set, get) => {
     }
   }
 
+  /** Pre-buffers the NEXT track so the handoff at the end of the current song is instant:
+   *  the URL is resolved now (phone-side cache warmed), and the native audio engine
+   *  primes a second player for it while this one plays. Everything else is a no-op. */
+  function preloadUpcoming(track: Track) {
+    if (!track || needsClipLookup(track, get().preferVideo)) return;
+    void withDeadline(Promise.resolve(streamSource(track.id, "audio", get().quality)), 12_000, "")
+      .then((url) => {
+        if (url) (audio as unknown as { preloadNext?: (url: string) => void }).preloadNext?.(url);
+      })
+      .catch(() => {});
+  }
+
   /** Resolve streams ahead of time so the next track starts instantly. Failures are
    *  silent on purpose — a cold track still plays, just after an on-demand resolve. */
   function warm(ids: string[]) {
     for (const id of ids) api.prepare(id).catch(() => {});
+  }
+
+  /** Never let a slow fetch hold playback hostage: after `ms` it resolves with the fallback. */
+  function withDeadline<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    return Promise.race([promise, new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))]);
+  }
+
+  // A hung stream start must never hold the queue hostage. The watchdog gives a load 15 seconds to
+  // reach "playing": once it quietly rebuilds the same track (a fresh URL from the resolver), and if
+  // even that stalls, it treats the track as dead and moves the queue on — no more silent limbo.
+  let stallTimer: ReturnType<typeof setTimeout> | null = null;
+  let stallRetriedFor: string | null = null;
+
+  function armStallWatch() {
+    disarmStallWatch();
+    stallTimer = setTimeout(() => {
+      stallTimer = null;
+      const s = get();
+      const track = s.queue[s.index];
+      if (s.status !== "loading" || s.statusText !== null || !track) return;
+      const url = activeMedia()?.getAttribute("src") ?? "";
+      if (stallRetriedFor !== track.id) {
+        // First offense: forget the URL (the phone caches it) and rebuild from the same spot.
+        stallRetriedFor = track.id;
+        if (url && capabilities.retryOnError) void explainStreamError(url).catch(() => {});
+        load(s.index, { startAt: s.position, autoplay: true });
+        return;
+      }
+      // Still nothing: surface why, report() moves the queue on by itself.
+      void explainStreamError(url)
+        .then(({ message, code }) => report(message, code))
+        .catch(() => report(getT().player.streamFailed));
+    }, 15_000);
+  }
+
+  function disarmStallWatch() {
+    if (stallTimer !== null) {
+      clearTimeout(stallTimer);
+      stallTimer = null;
+    }
   }
 
   /** Multi-artist credits ("Masicka, Dunw3ll") group under the primary act — otherwise
@@ -344,6 +401,9 @@ export const usePlayer = create<PlayerState>((set, get) => {
       suggestedFrom: deriveSuggestedFrom(sources),
     }));
     warm(picks.slice(0, 2).map((p) => p.track.id));
+    // Suggestions that landed right after the playing track get the native pre-roll too.
+    const now = get();
+    if (now.suggestedFrom === now.index + 1) preloadUpcoming(picks[0]!.track);
   }
 
   /** Phase 2: the autoplay boundary derives from queue categories — first autoplay source. */
@@ -367,7 +427,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const remaining = s.queue.length - s.index - 1;
       if (remaining >= CFG.autoplay.replenish_below) return;
       const want = Math.max(0, CFG.autoplay.target_upcoming_recommendations - remaining);
-      const pool = await api.radio(seed.id, seed.artist);
+      const pool = await withDeadline(api.radio(seed.id, seed.artist), 10_000, [] as Track[]);
       const picks = generateSuggestions({
         seed, index: s.index, pool,
         queuedIds: new Set(s.queue.map((t) => t.id)),
@@ -411,7 +471,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 1800));
         const remaining = s.queue.length - s.index - 1;
         const want = Math.max(0, CFG.autoplay.target_upcoming_recommendations - remaining);
-        const pool = await api.radio(last.id, last.artist).catch(() => [] as Track[]);
+        const pool = await withDeadline(api.radio(last.id, last.artist).catch(() => [] as Track[]), 10_000, [] as Track[]);
         let candidates = pickSuggestions(pool, last, 25);
         if (!candidates.length) candidates = pickSuggestions(listenHistory.slice(1, 40).filter((t) => t.id !== last.id), last, 25);
         const more = candidates.slice(0, Math.min(25, Math.max(want, 5), CFG.autoplay.maximum_recommendations_per_session - sessionAutoplayCount));
@@ -454,12 +514,19 @@ export const usePlayer = create<PlayerState>((set, get) => {
       completion: 0, listenedSeconds: 0, at: Date.now(),
     });
     // Warm up the next two tracks (and, in Video mode, find and resolve their clips) so the
-    // queue flows without on-demand resolves mid-listen.
-    for (const upcoming of [s.queue[s.index + 1], s.queue[s.index + 2]]) {
-      if (!upcoming) continue;
-      if (s.preferVideo) void lookupClip(upcoming).then((id) => api.prepare(id ?? upcoming.id).catch(() => {}));
-      else api.prepare(upcoming.id).catch(() => {});
+    // queue flows without on-demand resolves mid-listen — and prime the immediate next one
+    // natively, so the handoff when this song ends is instant.
+    const next = s.queue[s.index + 1];
+    const after = s.queue[s.index + 2];
+    if (s.preferVideo) {
+      for (const upcoming of [next, after]) {
+        if (!upcoming) continue;
+        void lookupClip(upcoming).then((id) => api.prepare(id ?? upcoming.id).catch(() => {}));
+      }
+    } else {
+      warm([next?.id, after?.id].filter((id): id is string => !!id));
     }
+    if (next) preloadUpcoming(next);
   }
 
   function onEnded() {
@@ -542,6 +609,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     });
     media.addEventListener("playing", () => {
       if (!isActive()) return;
+      disarmStallWatch(); // it got there: no rebuild, no skip
       set({ status: "playing", statusText: null });
       onStarted();
       syncPlaybackState();
@@ -555,7 +623,10 @@ export const usePlayer = create<PlayerState>((set, get) => {
       syncPlaybackState();
     });
     media.addEventListener("waiting", () => {
-      if (isActive() && !media.paused) set({ status: "loading" });
+      if (isActive() && !media.paused) {
+        set({ status: "loading" });
+        armStallWatch(); // a mid-song buffer stall gets the same rebuild-then-skip treatment
+      }
     });
     media.addEventListener("timeupdate", () => {
       if (!isActive() || pendingSeek > 0) return;
